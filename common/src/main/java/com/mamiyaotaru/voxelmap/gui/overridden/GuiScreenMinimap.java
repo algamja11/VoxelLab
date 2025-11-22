@@ -24,7 +24,7 @@ public class GuiScreenMinimap extends Screen {
     public void removed() { MapSettingsManager.instance.saveAll(); }
 
     public void renderTooltip(GuiGraphics drawContext, Component text, int x, int y) {
-        if (!(text != null && text.getString() != null && !text.getString().isEmpty())) {
+        if (text == null || text.getString().isEmpty()) {
             return;
         }
 
