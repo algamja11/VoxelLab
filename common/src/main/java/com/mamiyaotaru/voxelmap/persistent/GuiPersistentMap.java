@@ -135,8 +135,9 @@ public class GuiPersistentMap extends PopupGuiScreen implements IGuiWaypoints {
     private boolean keyLeftPressed;
     private boolean keyRightPressed;
     private final int headIconSize = 12;
+    private final int headIconBoundOffset = 6;
     private final int waypointIconSize = 16;
-    private final int iconBoundOffset = 6;
+    private final int waypointIconBoundOffset = 4;
 
     public GuiPersistentMap(Screen parent) {
         this.parent = parent;
@@ -834,8 +835,8 @@ public class GuiPersistentMap extends PopupGuiScreen implements IGuiWaypoints {
 
         int x = this.width / 2;
         int y = this.height / 2;
-        int boundX = x - this.iconBoundOffset;
-        int boundY = y - this.top - this.iconBoundOffset;
+        int boundX = x - this.headIconBoundOffset;
+        int boundY = y - this.top - this.headIconBoundOffset;
 
         double wayX = this.mapCenterX - (this.oldNorth ? -playerZ : playerX);
         double wayY = this.mapCenterZ - (this.oldNorth ? playerX : playerZ);
@@ -893,8 +894,8 @@ public class GuiPersistentMap extends PopupGuiScreen implements IGuiWaypoints {
 
         int x = this.width / 2;
         int y = this.height / 2;
-        int boundX = x - this.iconBoundOffset;
-        int boundY = y - this.top - this.iconBoundOffset;
+        int boundX = x - this.waypointIconBoundOffset;
+        int boundY = y - this.top - this.waypointIconBoundOffset;
 
         double wayX = this.mapCenterX - (this.oldNorth ? -ptZ : ptX);
         double wayY = this.mapCenterZ - (this.oldNorth ? ptX : ptZ);
@@ -907,6 +908,9 @@ public class GuiPersistentMap extends PopupGuiScreen implements IGuiWaypoints {
         float scaleY = 1.0F;
         boolean farX = Math.abs(dispX) > boundX;
         boolean farY = Math.abs(dispY) > boundY;
+        if ((farX || farY) && !this.options.showWaypointMarkers) {
+            return;
+        }
         if (farX) scaleX = (float) (boundX / Math.abs(dispX));
         if (farY) scaleY = (float) (boundY / Math.abs(dispY));
         hypot *= Math.min(scaleX, scaleY);
@@ -990,37 +994,39 @@ public class GuiPersistentMap extends PopupGuiScreen implements IGuiWaypoints {
             guiGraphics.pose().translate(-x, -y);
         }
 
-        if (mapOptions.biomeOverlay == 0 && this.options.showWaypointNames || target || hover) {
-            float fontScale = outOfBounds ? 0.75F : 1.0F;
+        if ((this.options.showWaypointNames) || target || hover) {
+            if (this.options.showWaypointMarkerNames || !outOfBounds) {
+                float fontScale = outOfBounds ? 0.5F : 0.75F;
 
-            guiGraphics.pose().pushMatrix();
-            guiGraphics.pose().scale(fontScale, fontScale);
+                guiGraphics.pose().pushMatrix();
+                guiGraphics.pose().scale(fontScale, fontScale);
 
-            float degLocate = locate * Mth.RAD_TO_DEG;
-            float pivotX = x / fontScale;
-            float pivotY = y / fontScale + waypointIconSize / 2.0F;
-            if (outOfBounds) {
-                if (degLocate > 90.0F || degLocate < -90.0F) {
-                    pivotY += waypointIconSize / 2.0F;
-                    guiGraphics.pose().translate(pivotX, pivotY);
-                    guiGraphics.pose().rotate(180.0F * Mth.DEG_TO_RAD);
-                    guiGraphics.pose().translate(-pivotX, -pivotY);
-                }
+                float degLocate = locate * Mth.RAD_TO_DEG;
+                float pivotX = x / fontScale;
+                float pivotY = (y + waypointIconSize / 2.0F) / fontScale;
+                if (outOfBounds) {
+                    if (degLocate > 90.0F || degLocate < -90.0F) {
+                        pivotY += this.font.lineHeight / 2.0F / fontScale;
+                        guiGraphics.pose().translate(pivotX, pivotY);
+                        guiGraphics.pose().rotate(180.0F * Mth.DEG_TO_RAD);
+                        guiGraphics.pose().translate(-pivotX, -pivotY);
+                    }
 
-                String shortened = "";
-                int maxWidth = 30;
-                for (int i = 0; i < name.length(); i++) {
-                    shortened += name.charAt(i);
-                    if (!name.equals(shortened) && this.chkLen(shortened) > maxWidth) {
-                        name = shortened + "...";
-                        break;
+                    String shortened = "";
+                    int maxWidth = 45;
+                    for (int i = 0; i < name.length(); i++) {
+                        shortened += name.charAt(i);
+                        if (!name.equals(shortened) && this.chkLen(shortened) > maxWidth) {
+                            name = shortened + "...";
+                            break;
+                        }
                     }
                 }
-            }
 
-            int halfWidth = this.chkLen(name) / 2;
-            this.write(guiGraphics, name, pivotX - halfWidth, pivotY, !pt.enabled && !target && !hover ? 0x55FFFFFF : 0xFFFFFFFF);
-            guiGraphics.pose().popMatrix();
+                int halfWidth = this.chkLen(name) / 2;
+                this.write(guiGraphics, name, pivotX - halfWidth, pivotY, !pt.enabled && !target && !hover ? 0x55FFFFFF : 0xFFFFFFFF);
+                guiGraphics.pose().popMatrix();
+            }
         }
 
         guiGraphics.pose().popMatrix();

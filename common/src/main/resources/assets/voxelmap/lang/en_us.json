@@ -190,6 +190,8 @@
   "options.worldmap.warning": "(Edit at your own risk)",
   "options.worldmap.showWaypoints": "Show Waypoints",
   "options.worldmap.showWaypointNames": "Show Waypoint Names",
+  "options.worldmap.showWaypointMarkers": "Show Waypoint Markers",
+  "options.worldmap.showWaypointMarkerNames": "Show Waypoint Names on Markers",
   "options.worldmap.minZoom": "Min Zoom",
   "options.worldmap.maxZoom": "Max Zoom",
   "options.worldmap.cacheSize": "Regions Cache Size",

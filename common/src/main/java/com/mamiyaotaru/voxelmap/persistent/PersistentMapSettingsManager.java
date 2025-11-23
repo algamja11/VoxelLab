@@ -22,6 +22,8 @@ public class PersistentMapSettingsManager implements ISubSettingsManager {
     protected boolean outputImages;
     public boolean showWaypoints = true;
     public boolean showWaypointNames = true;
+    public boolean showWaypointMarkers = true;
+    public boolean showWaypointMarkerNames = false;
 
     @Override
     public void loadSettings(File settingsFile) {
@@ -38,6 +40,8 @@ public class PersistentMapSettingsManager implements ISubSettingsManager {
                     case "Worldmap Cache Size" -> this.cacheSize = Integer.parseInt(curLine[1]);
                     case "Show Worldmap Waypoints" -> this.showWaypoints = Boolean.parseBoolean(curLine[1]);
                     case "Show Worldmap Waypoint Names" -> this.showWaypointNames = Boolean.parseBoolean(curLine[1]);
+                    case "Show Worldmap Waypoint Markers" -> this.showWaypointMarkers = Boolean.parseBoolean(curLine[1]);
+                    case "Show Worldmap Waypoint Marker Names" -> this.showWaypointMarkerNames = Boolean.parseBoolean(curLine[1]);
                     case "Output Images" -> this.outputImages = Boolean.parseBoolean(curLine[1]);
                 }
             }
@@ -67,6 +71,8 @@ public class PersistentMapSettingsManager implements ISubSettingsManager {
         out.println("Worldmap Cache Size:" + this.cacheSize);
         out.println("Show Worldmap Waypoints:" + this.showWaypoints);
         out.println("Show Worldmap Waypoint Names:" + this.showWaypointNames);
+        out.println("Show Worldmap Waypoint Markers:" + this.showWaypointMarkers);
+        out.println("Show Worldmap Waypoint Marker Names:" + this.showWaypointMarkerNames);
     }
 
     @Override
@@ -110,6 +116,8 @@ public class PersistentMapSettingsManager implements ISubSettingsManager {
         return switch (par1EnumOptions) {
             case SHOW_WAYPOINTS -> this.showWaypoints && VoxelMap.mapOptions.waypointsAllowed;
             case SHOW_WAYPOINT_NAMES -> this.showWaypointNames && VoxelMap.mapOptions.waypointsAllowed;
+            case SHOW_WAYPOINT_MARKERS -> this.showWaypointMarkers && VoxelMap.mapOptions.waypointsAllowed;
+            case SHOW_WAYPOINT_MARKER_NAMES -> this.showWaypointMarkerNames && VoxelMap.mapOptions.waypointsAllowed;
             default -> throw new IllegalArgumentException("Add code to handle EnumOptionMinimap: " + par1EnumOptions.getName() + ". (possibly not a boolean)");
         };
     }
@@ -153,6 +161,8 @@ public class PersistentMapSettingsManager implements ISubSettingsManager {
         switch (par1EnumOptions) {
             case SHOW_WAYPOINTS -> this.showWaypoints = !this.showWaypoints;
             case SHOW_WAYPOINT_NAMES -> this.showWaypointNames = !this.showWaypointNames;
+            case SHOW_WAYPOINT_MARKERS -> this.showWaypointMarkers = !this.showWaypointMarkers;
+            case SHOW_WAYPOINT_MARKER_NAMES -> this.showWaypointMarkerNames = !this.showWaypointMarkerNames;
             default -> throw new IllegalArgumentException("Add code to handle EnumOptionMinimap: " + par1EnumOptions.getName());
         }
 

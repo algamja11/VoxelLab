@@ -40,6 +40,8 @@ public enum EnumOptionsMinimap {
     MIN_ZOOM("options.worldmap.minZoom", true, false, false),
     MAX_ZOOM("options.worldmap.maxZoom", true, false, false),
     CACHE_SIZE("options.worldmap.cacheSize", true, false, false),
+    SHOW_WAYPOINT_MARKERS("options.worldmap.showWaypointMarkers", false, true, false),
+    SHOW_WAYPOINT_MARKER_NAMES("options.worldmap.showWaypointMarkerNames", false, true, false),
     MOVE_MAP_DOWN_WHILE_STATUS_EFFECT("options.minimap.moveMapBelowStatusEffectIcons", false, true, false),
     MOVE_SCOREBOARD_DOWN("options.minimap.moveScoreboardBelowMap", false, true, false),
     DISTANCE_UNIT_CONVERSION("options.minimap.waypoints.distanceUnitConversion", false, false, true),
