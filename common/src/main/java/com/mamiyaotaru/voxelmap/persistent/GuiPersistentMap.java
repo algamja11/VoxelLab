@@ -996,7 +996,7 @@ public class GuiPersistentMap extends PopupGuiScreen implements IGuiWaypoints {
 
         if ((this.options.showWaypointNames) || target || hover) {
             if (this.options.showWaypointMarkerNames || !outOfBounds) {
-                float fontScale = outOfBounds ? 0.5F : 0.75F;
+                float fontScale = outOfBounds ? 0.75F : 1.0F;
 
                 guiGraphics.pose().pushMatrix();
                 guiGraphics.pose().scale(fontScale, fontScale);
@@ -1013,7 +1013,7 @@ public class GuiPersistentMap extends PopupGuiScreen implements IGuiWaypoints {
                     }
 
                     String shortened = "";
-                    int maxWidth = 45;
+                    int maxWidth = 35;
                     for (int i = 0; i < name.length(); i++) {
                         shortened += name.charAt(i);
                         if (!name.equals(shortened) && this.chkLen(shortened) > maxWidth) {
