@@ -23,7 +23,7 @@ public class PersistentMapSettingsManager implements ISubSettingsManager {
     public boolean showWaypoints = true;
     public boolean showWaypointNames = true;
     public boolean showWaypointMarkers = true;
-    public boolean showWaypointMarkerNames = false;
+    public boolean showWaypointMarkerNames = true;
 
     @Override
     public void loadSettings(File settingsFile) {
