@@ -3,30 +3,50 @@ package com.mamiyaotaru.voxelmap.gui;
 import com.mamiyaotaru.voxelmap.RadarSettingsManager;
 import com.mamiyaotaru.voxelmap.VoxelMap;
 import com.mamiyaotaru.voxelmap.gui.overridden.GuiScreenMinimap;
+import com.mamiyaotaru.voxelmap.gui.overridden.GuiSimpleTab;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractSelectionList;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.tabs.Tab;
+import net.minecraft.client.gui.components.tabs.TabManager;
+import net.minecraft.client.gui.components.tabs.TabNavigationBar;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
+import java.util.ArrayList;
+
 public class GuiMobs extends GuiScreenMinimap {
     protected final RadarSettingsManager options;
     protected Component screenTitle;
-    private GuiSlotMobs mobsList;
-    private Button buttonEnable;
-    private Button buttonDisable;
-    protected EditBox filter;
     private Component tooltip;
     protected Identifier selectedMobId;
 
+    private final TabManager tabManager = new TabManager(this::addRenderableWidget, this::removeWidget);
+    private TabNavigationBar tabNavigationBar;
+
+    private int tabIndex = 0;
+    private int lastTabIndex = 0;
+
+    private AbstractSelectionList<?> currentList;
+    private GuiSlotMobs mobsList;
+    private GuiSlotMobPresets presetsList;
+    protected EditBox filter;
+    private Button buttonEnable;
+    private Button buttonDisable;
+    private final ArrayList<AbstractWidget> tabWidgets = new ArrayList<>();
+
     public GuiMobs(Screen parentScreen, RadarSettingsManager options) {
         this.lastScreen = parentScreen;
-
         this.options = options;
     }
 
@@ -37,26 +57,96 @@ public class GuiMobs extends GuiScreenMinimap {
     @Override
     public void init() {
         this.screenTitle = Component.translatable("options.minimap.mobs.title");
+
+        this.tabNavigationBar = TabNavigationBar.builder(this.tabManager, this.width).addTabs(new Tab[] {
+                new GuiSimpleTab(Component.translatable("options.minimap.mobs.tab.toggleMobs"), 0),
+                new GuiSimpleTab(Component.translatable("options.minimap.mobs.tab.presets"), 1)}).build();
+
+        this.tabNavigationBar.setFocused(true);
+        this.tabNavigationBar.selectTab(this.tabIndex, false);
+        this.tabNavigationBar.arrangeElements();
+        this.addRenderableWidget(this.tabNavigationBar);
+
+        int tabBottom = this.tabNavigationBar.getRectangle().bottom();
+
         this.mobsList = new GuiSlotMobs(this);
+        this.presetsList = new GuiSlotMobPresets(this);
+        this.currentList = this.mobsList;
+
+        ScreenRectangle tabAreaRect = new ScreenRectangle(0, tabBottom, this.width, this.currentList.getY() + this.currentList.getHeight());
+        this.tabManager.setTabArea(tabAreaRect);
+
         int filterStringWidth = this.getFont().width(I18n.get("minimap.waypoints.filter") + ":");
-        this.filter = new EditBox(this.getFont(), this.getWidth() / 2 - 153 + filterStringWidth + 5, this.getHeight() - 56, 305 - filterStringWidth - 5, 20, null);
+        this.filter = new EditBox(this.getFont(), this.getWidth() / 2 - 153 + filterStringWidth + 5, this.getHeight() - 56, 305 - filterStringWidth - 5, 20, Component.empty());
         this.filter.setMaxLength(35);
-        this.addRenderableWidget(this.filter);
-        this.addRenderableWidget(this.buttonEnable = new Button.Builder(Component.translatable("options.minimap.mobs.enable"), button -> this.setMobEnabled(this.selectedMobId, true)).bounds(this.getWidth() / 2 - 154, this.getHeight() - 28, 100, 20).build());
-        this.addRenderableWidget(this.buttonDisable = new Button.Builder(Component.translatable("options.minimap.mobs.disable"), button -> this.setMobEnabled(this.selectedMobId, false)).bounds(this.getWidth() / 2 - 50, this.getHeight() - 28, 100, 20).build());
-        this.addRenderableWidget(new Button.Builder(Component.translatable("gui.done"), button -> this.onClose()).bounds(this.getWidth() / 2 + 4 + 50, this.getHeight() - 28, 100, 20).build());
         this.setFocused(this.filter);
-        this.filter.setFocused(true);
+        this.addRenderableWidget(this.filter);
+
         boolean isSomethingSelected = this.selectedMobId != null;
+
+        this.buttonEnable = new Button.Builder(Component.translatable("options.minimap.mobs.enable"), button -> this.setMobEnabled(this.selectedMobId, true)).bounds(this.getWidth() / 2 - 154, this.getHeight() - 28, 100, 20).build();
         this.buttonEnable.active = isSomethingSelected;
+        this.addRenderableWidget(this.buttonEnable);
+
+        this.buttonDisable = new Button.Builder(Component.translatable("options.minimap.mobs.disable"), button -> this.setMobEnabled(this.selectedMobId, false)).bounds(this.getWidth() / 2 - 50, this.getHeight() - 28, 100, 20).build();
         this.buttonDisable.active = isSomethingSelected;
+        this.addRenderableWidget(this.buttonDisable);
+
+        Button doneButton = new Button.Builder(Component.translatable("gui.done"), button -> this.onClose()).bounds(this.getWidth() / 2 + 4 + 50, this.getHeight() - 28, 100, 20).build();
+        this.addRenderableWidget(doneButton);
+
+        this.lastTabIndex = -1;
+        this.replaceElements();
+
+    }
+
+    private void replaceElements() {
+        for (AbstractWidget widget : this.tabWidgets) {
+            this.removeWidget(widget);
+        }
+        this.tabWidgets.clear();
+
+        if (this.tabIndex == this.lastTabIndex) {
+            return;
+        }
+        this.lastTabIndex = this.tabIndex;
+
+        boolean mobsTab = this.tabIndex == 0;
+        this.currentList = mobsTab ? this.mobsList : this.presetsList;
+        this.addTabWidget(this.currentList);
+
+        this.selectedMobId = null;
+        this.filter.setValue("");
+        this.filter.active = mobsTab;
+        this.updateListFilter("");
+    }
+
+    private void addTabWidget(AbstractWidget widget) {
+        this.tabWidgets.add(widget);
+        this.addRenderableWidget(widget);
+    }
+
+    private void checkTabSwitch() {
+        if (this.tabManager.getCurrentTab() instanceof GuiSimpleTab tab) {
+            if (tab.tabIndex() != this.tabIndex) {
+                this.tabIndex = tab.tabIndex();
+                this.replaceElements();
+            }
+        }
+    }
+
+    private void updateListFilter(String filter) {
+        if (this.currentList == this.mobsList) {
+            this.mobsList.updateFilter(filter);
+        }
     }
 
     @Override
     public boolean keyPressed(KeyEvent keyEvent) {
         boolean OK = super.keyPressed(keyEvent);
+        this.checkTabSwitch();
         if (this.filter.isFocused()) {
-            this.mobsList.updateFilter(this.filter.getValue().toLowerCase());
+            this.updateListFilter(this.filter.getValue().toLowerCase());
         }
 
         return OK;
@@ -66,45 +156,18 @@ public class GuiMobs extends GuiScreenMinimap {
     public boolean charTyped(CharacterEvent characterEvent) {
         boolean OK = super.charTyped(characterEvent);
         if (this.filter.isFocused()) {
-            this.mobsList.updateFilter(this.filter.getValue().toLowerCase());
+            this.updateListFilter(this.filter.getValue().toLowerCase());
         }
 
         return OK;
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent mouseButtonEvent, boolean bl) {
-        double mouseY = mouseButtonEvent.y();
-        if (mouseY >= this.mobsList.getY() && mouseY < this.mobsList.getBottom()) {
-            this.mobsList.mouseClicked(mouseButtonEvent, bl);
-        }
-        return super.mouseClicked(mouseButtonEvent, bl);
-    }
+    public boolean mouseClicked(MouseButtonEvent mouseButtonEvent, boolean doubleClick) {
+        boolean clicked = super.mouseClicked(mouseButtonEvent, doubleClick);
+        this.checkTabSwitch();
 
-    @Override
-    public boolean mouseReleased(MouseButtonEvent mouseButtonEvent) {
-        double mouseY = mouseButtonEvent.y();
-        if (mouseY >= this.mobsList.getY() && mouseY < this.mobsList.getBottom()) {
-            this.mobsList.mouseReleased(mouseButtonEvent);
-        }
-        return super.mouseReleased(mouseButtonEvent);
-    }
-
-    @Override
-    public boolean mouseDragged(MouseButtonEvent mouseButtonEvent, double d, double e) {
-        double mouseY = mouseButtonEvent.y();
-        if (mouseY >= this.mobsList.getY() && mouseY < this.mobsList.getBottom()) {
-            return this.mobsList.mouseDragged(mouseButtonEvent, d, e);
-        }
-        return super.mouseDragged(mouseButtonEvent, d, e);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double amount) {
-        if (mouseY >= this.mobsList.getY() && mouseY < this.mobsList.getBottom()) {
-            return this.mobsList.mouseScrolled(mouseX, mouseY, 0, amount);
-        }
-        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, amount);
+        return clicked;
     }
 
     protected void setSelectedMob(Identifier id) {
@@ -128,16 +191,25 @@ public class GuiMobs extends GuiScreenMinimap {
     }
 
     @Override
+    public void renderMenuBackground(GuiGraphics drawContext) {
+        drawContext.blit(RenderPipelines.GUI_TEXTURED, CreateWorldScreen.TAB_HEADER_BACKGROUND, 0, 0, 0.0F, 0.0F, this.width, this.currentList.getY(), 16, 16);
+        this.renderMenuBackground(drawContext, 0, this.currentList.getY(), this.width, this.height);
+    }
+
+    @Override
     public void render(GuiGraphics drawContext, int mouseX, int mouseY, float delta) {
         this.tooltip = null;
-        this.mobsList.render(drawContext, mouseX, mouseY, delta);
-        drawContext.drawCenteredString(this.getFont(), this.screenTitle, this.getWidth() / 2, 20, 0xFFFFFFFF);
+
+        super.render(drawContext, mouseX, mouseY, delta);
+
+        drawContext.blit(RenderPipelines.GUI_TEXTURED, Screen.FOOTER_SEPARATOR, 0, this.currentList.getY() + this.currentList.getHeight(), 0.0F, 0.0F, this.width, 2, 32, 2);
+
         boolean isSomethingSelected = this.selectedMobId != null;
         this.buttonEnable.active = isSomethingSelected && !this.isMobEnabled(this.selectedMobId);
         this.buttonDisable.active = isSomethingSelected && this.isMobEnabled(this.selectedMobId);
-        super.render(drawContext, mouseX, mouseY, delta);
+
         drawContext.drawString(this.getFont(), I18n.get("minimap.waypoints.filter") + ":", this.getWidth() / 2 - 153, this.getHeight() - 51, 0xFFA0A0A0);
-        this.filter.render(drawContext, mouseX, mouseY, delta);
+
         if (this.tooltip != null) {
             this.renderTooltip(drawContext, this.tooltip, mouseX, mouseY);
         }

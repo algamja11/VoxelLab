@@ -3,79 +3,91 @@ package com.mamiyaotaru.voxelmap.util;
 import com.mamiyaotaru.voxelmap.VoxelConstants;
 import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.OwnableEntity;
-import net.minecraft.world.entity.animal.bee.Bee;
 import net.minecraft.world.entity.animal.polarbear.PolarBear;
 import net.minecraft.world.entity.animal.rabbit.Rabbit;
-import net.minecraft.world.entity.animal.wolf.Wolf;
 import net.minecraft.world.entity.monster.Enemy;
-import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin;
 
 public enum MobCategory {
+    PLAYER,
     HOSTILE,
     NEUTRAL,
-    TAMEABLE,
-    PLAYER;
+    FRIENDLY,
+//  Tameable mobs can be friendly, neutral or hostile depending on their current state.
+//    TAMEABLE,
+    UNKNOWN;
 
     public static MobCategory forEntity(Entity entity) {
-        if (isHostile(entity)) {
-            return HOSTILE;
-        } else if (isPlayer(entity)) {
-            return PLAYER;
-        } else if (isOwnable(entity)) {
-            return TAMEABLE;
-        } else {
-            return NEUTRAL;
+        if (!(entity instanceof LivingEntity)) {
+            return UNKNOWN;
         }
+
+        if (isPlayer(entity)) {
+            return PLAYER;
+        } else if (isHostile(entity)) {
+            return HOSTILE;
+        } else if (isNeutral(entity)) {
+            return NEUTRAL;
+        } else if (isFriendly(entity)) {
+            return FRIENDLY;
+        }
+
+        return UNKNOWN;
     }
 
     public static MobCategory forEntityType(EntityType<?> entityType) {
-        if (entityType.getCategory() == net.minecraft.world.entity.MobCategory.MONSTER) {
-            return HOSTILE;
-        } else if (entityType == EntityType.PLAYER) {
-            return PLAYER;
-        } else {
-            return NEUTRAL;
+        if (VoxelConstants.getMinecraft().level == null) {
+            return UNKNOWN;
         }
-    }
 
-    public static boolean isHostile(Entity entity) {
-        if (entity instanceof ZombifiedPiglin zombifiedPiglinEntity) {
-            return zombifiedPiglinEntity.getPersistentAngerTarget() != null && zombifiedPiglinEntity.getPersistentAngerTarget().equals(VoxelConstants.getPlayer().getUUID());
-        } else if (entity instanceof Enemy) {
-            return true;
-        } else if (entity instanceof Bee beeEntity) {
-            return beeEntity.isAngry();
-        } else {
-            if (entity instanceof PolarBear polarBearEntity) {
+        Entity entity = entityType.create(VoxelConstants.getMinecraft().level, EntitySpawnReason.LOAD);
 
-                for (PolarBear object : polarBearEntity.level().getEntitiesOfClass(PolarBear.class, polarBearEntity.getBoundingBox().inflate(8.0, 4.0, 8.0))) {
-                    if (object.isBaby()) {
-                        return true;
-                    }
-                }
-            }
-
-            if (entity instanceof Rabbit rabbitEntity) {
-                return rabbitEntity.getVariant() == Rabbit.Variant.EVIL;
-            } else if (entity instanceof Wolf wolfEntity) {
-                return wolfEntity.isAngry();
-            } else {
-                return false;
-            }
-        }
-    }
-
-    public static boolean isOwnable(Entity entity) {
-        return entity instanceof OwnableEntity;
+        return forEntity(entity);
     }
 
     public static boolean isPlayer(Entity entity) {
         return entity instanceof RemotePlayer;
     }
 
+    public static boolean isHostile(Entity entity) {
+        switch (entity) {
+            case PolarBear polarBear -> {
+                for (PolarBear object : polarBear.level().getEntitiesOfClass(PolarBear.class, polarBear.getBoundingBox().inflate(8.0, 4.0, 8.0))) {
+                    if (object.isBaby()) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            case Rabbit rabbit -> {
+                return rabbit.getVariant() == Rabbit.Variant.EVIL;
+            }
+            case NeutralMob neutralMob -> {
+                return neutralMob.getPersistentAngerTarget() != null && neutralMob.getPersistentAngerTarget().getUUID().equals(VoxelConstants.getPlayer().getUUID());
+            }
+            case Enemy enemy -> {
+                return true;
+            }
+            default -> {}
+        }
+
+        return false;
+    }
+
     public static boolean isNeutral(Entity entity) {
-        return !isPlayer(entity) && !isHostile(entity);
+        return !isHostile(entity) && (entity instanceof NeutralMob);
+    }
+
+    public static boolean isFriendly(Entity entity) {
+        return !isPlayer(entity) && !isNeutral(entity) && !isHostile(entity);
+    }
+
+    public static boolean isOwnable(Entity entity) {
+        return entity instanceof OwnableEntity;
     }
 }

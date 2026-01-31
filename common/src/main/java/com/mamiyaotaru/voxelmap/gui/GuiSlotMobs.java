@@ -32,7 +32,7 @@ class GuiSlotMobs extends AbstractSelectionList<GuiSlotMobs.MobItem> {
     static final Component TOOLTIP_DISABLE = Component.translatable("options.minimap.mobs.disableTooltip");
 
     GuiSlotMobs(GuiMobs par1GuiMobs) {
-        super(VoxelConstants.getMinecraft(), par1GuiMobs.getWidth(), par1GuiMobs.getHeight() - 110, 40, 18);
+        super(VoxelConstants.getMinecraft(), par1GuiMobs.getWidth(), par1GuiMobs.getHeight() - 86, 24, 18);
 
         this.parentGui = par1GuiMobs;
         // RadarSettingsManager options = this.parentGui.options;
@@ -45,14 +45,14 @@ class GuiSlotMobs extends AbstractSelectionList<GuiSlotMobs.MobItem> {
         });
 
         this.mobs.sort((mob1, mob2) -> {
-            int dcat = mob1.category.compareTo(mob2.category);
+            int dcat = -mob1.category.compareTo(mob2.category);
             if (dcat != 0) {
                 return dcat;
             }
             return String.CASE_INSENSITIVE_ORDER.compare(mob1.nameString, mob2.nameString);
         });
         this.mobsFiltered = new ArrayList<>(this.mobs);
-        this.mobsFiltered.forEach(x -> addEntry((MobItem) x));
+        this.mobsFiltered.forEach(entry -> addEntry((MobItem) entry));
     }
 
     @Override
@@ -96,6 +96,14 @@ class GuiSlotMobs extends AbstractSelectionList<GuiSlotMobs.MobItem> {
 
     }
 
+    @Override
+    protected void renderListSeparators(GuiGraphics guiGraphics) {
+    }
+
+    @Override
+    protected void renderListBackground(GuiGraphics guiGraphics) {
+    }
+
     public class MobItem extends AbstractSelectionList.Entry<MobItem> {
         private final GuiMobs parentGui;
         private final EntityType<?> type;
@@ -120,13 +128,15 @@ class GuiSlotMobs extends AbstractSelectionList<GuiSlotMobs.MobItem> {
 
         @Override
         public void renderContent(GuiGraphics drawContext, int mouseX, int mouseY, boolean hovered, float tickDelta) {
-            boolean isHostile = category == MobCategory.HOSTILE;
-            boolean isNeutral = !isHostile;
+            int color = 0xFFFFFFFF;
+            switch (category) {
+                case FRIENDLY -> color = 0xFF00FF00;
+                case NEUTRAL -> color = 0xFFFFFF00;
+                case HOSTILE -> color = 0xFFFF0000;
+            }
+
             boolean isEnabled = VoxelMap.radarOptions.isMobEnabled(type);
 
-            int red = isHostile ? 255 : 0;
-            int green = isNeutral ? 255 : 0;
-            int color = 0xFF000000 + (red << 16) + (green << 8);
             drawContext.drawCenteredString(this.parentGui.getFont(), this.name, this.parentGui.getWidth() / 2, getY() + 5, color);
 
             if (this.mobSprite == null) {

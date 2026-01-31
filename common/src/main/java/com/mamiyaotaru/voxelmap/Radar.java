@@ -10,7 +10,6 @@ import com.mamiyaotaru.voxelmap.util.TextUtils;
 import com.mamiyaotaru.voxelmap.util.VoxelMapPipelines;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.ARGB;
@@ -18,12 +17,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.animal.bee.Bee;
-import net.minecraft.world.entity.animal.polarbear.PolarBear;
-import net.minecraft.world.entity.animal.rabbit.Rabbit;
-import net.minecraft.world.entity.animal.wolf.Wolf;
 import net.minecraft.world.entity.monster.Enemy;
-import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.PlayerModelPart;
 
@@ -90,8 +84,15 @@ public class Radar implements IRadar {
     }
 
     private boolean isEntityShown(Entity entity) {
-        return entity != null && !entity.isInvisibleTo(VoxelConstants.getPlayer()) && (this.options.showHostiles && (this.options.radarAllowed || this.options.radarMobsAllowed) && this.isHostile(entity)
-                || this.options.showPlayers && (this.options.radarAllowed || this.options.radarPlayersAllowed) && this.isPlayer(entity) || this.options.showNeutrals && this.options.radarMobsAllowed && this.isNeutral(entity));
+        if (entity == null || entity.equals(VoxelConstants.getPlayer()) || entity.isInvisibleTo(VoxelConstants.getPlayer())) {
+            return false;
+        }
+
+        boolean playersShown = (this.options.radarAllowed || this.options.radarPlayersAllowed) && this.options.showPlayers;
+        boolean hostilesShown = (this.options.radarAllowed || this.options.radarMobsAllowed) && this.options.showHostiles;
+        boolean neutralsShown = (this.options.radarAllowed || this.options.radarMobsAllowed) && this.options.showNeutrals;
+
+        return (playersShown && this.isPlayer(entity)) || (hostilesShown && this.isHostile(entity)) || (neutralsShown && this.isNeutral(entity));
     }
 
     public void calculateMobs() {
@@ -274,39 +275,16 @@ public class Radar implements IRadar {
         guiGraphics.pose().popMatrix();
     }
 
-    private boolean isHostile(Entity entity) {
-        if (entity instanceof Enemy) {
-            return true;
-        } else if (entity instanceof ZombifiedPiglin zombifiedPiglinEntity) {
-            return zombifiedPiglinEntity.getPersistentAngerTarget() != null && zombifiedPiglinEntity.getPersistentAngerTarget().equals(VoxelConstants.getPlayer().getUUID());
-        } else if (entity instanceof Bee beeEntity) {
-            return beeEntity.isAngry();
-        } else if (entity instanceof PolarBear polarBearEntity) {
-            for (PolarBear object : polarBearEntity.level().getEntitiesOfClass(PolarBear.class, polarBearEntity.getBoundingBox().inflate(8.0, 4.0, 8.0))) {
-                if (object.isBaby()) {
-                    return true;
-                }
-            }
-            return false;
-        } else if (entity instanceof Rabbit rabbitEntity) {
-            return rabbitEntity.getVariant() == Rabbit.Variant.EVIL;
-        } else if (entity instanceof Wolf wolfEntity) {
-            return wolfEntity.isAngry();
-        } else {
-            return false;
-        }
+    private boolean isPlayer(Entity entity) {
+        return MobCategory.isPlayer(entity);
     }
 
-    private boolean isPlayer(Entity entity) {
-        return entity instanceof RemotePlayer;
+    private boolean isHostile(Entity entity) {
+        return (entity instanceof Enemy) || MobCategory.isHostile(entity);
     }
 
     private boolean isNeutral(Entity entity) {
-        if (!(entity instanceof LivingEntity)) {
-            return false;
-        } else {
-            return !(entity instanceof Player) && !this.isHostile(entity);
-        }
+        return !(entity instanceof Enemy) && MobCategory.isNeutral(entity);
     }
 
     public void onJoinServer() {

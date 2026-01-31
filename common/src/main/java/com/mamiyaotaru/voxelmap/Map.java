@@ -297,7 +297,9 @@ public class Map implements Runnable, IChangeObserver {
     public void newWorld(ClientLevel world) {
         this.world = world;
         this.lightmapTexture = this.getLightmapTexture();
-        this.mapData[this.zoom].blank();
+        for (FullMapData data : this.mapData) {
+            data.blank();
+        }
         this.doFullRender = true;
         VoxelConstants.getVoxelMapInstance().getSettingsAndLightingChangeNotifier().notifyOfChanges();
     }

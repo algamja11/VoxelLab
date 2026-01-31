@@ -7,6 +7,7 @@ import com.mamiyaotaru.voxelmap.gui.overridden.EnumOptionsMinimap;
 import com.mamiyaotaru.voxelmap.gui.overridden.GuiButtonText;
 import com.mamiyaotaru.voxelmap.gui.overridden.GuiOptionButtonMinimap;
 import com.mamiyaotaru.voxelmap.gui.overridden.GuiScreenMinimap;
+import com.mamiyaotaru.voxelmap.gui.overridden.GuiSimpleTab;
 import com.mamiyaotaru.voxelmap.persistent.GuiPersistentMapOptions;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -30,7 +31,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
-import java.util.function.Consumer;
 
 public class GuiMinimapOptions extends GuiScreenMinimap {
     protected String screenTitle = "Minimap Options";
@@ -74,11 +74,11 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
         this.screenTitle = I18n.get("options.minimap.title");
 
         this.tabNavigationBar = TabNavigationBar.builder(this.tabManager, this.width).addTabs(new Tab[] {
-                new OptionsTab(Component.translatable("stat.generalButton"), 0),
-                new OptionsTab(Component.translatable("options.minimap.tab.detailsPerformance"), 1),
-                new OptionsTab(Component.translatable("options.minimap.tab.radar"), 2),
-                new OptionsTab(Component.translatable("controls.title"), 3),
-                new OptionsTab(Component.translatable("options.minimap.tab.worldmap"), 4)}).build();
+                new GuiSimpleTab(Component.translatable("stat.generalButton"), 0),
+                new GuiSimpleTab(Component.translatable("options.minimap.tab.detailsPerformance"), 1),
+                new GuiSimpleTab(Component.translatable("options.minimap.tab.radar"), 2),
+                new GuiSimpleTab(Component.translatable("controls.title"), 3),
+                new GuiSimpleTab(Component.translatable("options.minimap.tab.worldmap"), 4)}).build();
 
         this.tabNavigationBar.setFocused(true);
         this.tabNavigationBar.selectTab(this.tabIndex, false);
@@ -86,12 +86,14 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
         this.addRenderableWidget(this.tabNavigationBar);
 
         int tabBottom = this.tabNavigationBar.getRectangle().bottom();
-        ScreenRectangle screenRect = new ScreenRectangle(0, tabBottom, this.width, this.height - this.layout.getFooterHeight() - tabBottom);
-        this.tabManager.setTabArea(screenRect);
+
         this.layout.setHeaderHeight(tabBottom);
         this.layout.addToFooter(new Button.Builder(Component.translatable("gui.done"), button -> this.onClose()).width(200).build());
         this.layout.visitWidgets(this::addRenderableWidget);
         this.layout.arrangeElements();
+
+        ScreenRectangle tabAreaRect = new ScreenRectangle(0, tabBottom, this.width, this.height - this.layout.getFooterHeight() - tabBottom);
+        this.tabManager.setTabArea(tabAreaRect);
 
         this.nextPageButton = new Button.Builder(Component.literal(">"), button -> {
             this.pageIndex++;
@@ -109,7 +111,7 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
     }
 
     public void replaceButtons() {
-        for (GuiEventListener widget : this.optionButtons) {
+        for (AbstractWidget widget : this.optionButtons) {
             this.removeWidget(widget);
         }
         this.optionButtons.clear();
@@ -211,11 +213,6 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
 
     }
 
-    private void addOptionButton(AbstractWidget widget) {
-        this.optionButtons.add(widget);
-        this.addRenderableWidget(widget);
-    }
-
     private void optionClicked(Button button) {
         if (!(button instanceof GuiOptionButtonMinimap button2)) {
             return;
@@ -267,11 +264,25 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
         }
     }
 
+    private void addOptionButton(AbstractWidget widget) {
+        this.optionButtons.add(widget);
+        this.addRenderableWidget(widget);
+    }
+
+    private void checkTabSwitch() {
+        if (this.tabManager.getCurrentTab() instanceof GuiSimpleTab tab) {
+            if (tab.tabIndex() != this.tabIndex) {
+                this.tabIndex = tab.tabIndex();
+                this.replaceButtons();
+            }
+        }
+    }
+
 
     @Override
     public void render(GuiGraphics drawContext, int mouseX, int mouseY, float delta) {
         super.render(drawContext, mouseX, mouseY, delta);
-        drawContext.blit(RenderPipelines.GUI_TEXTURED, Screen.FOOTER_SEPARATOR, 0, this.height - this.layout.getFooterHeight() - 2, 0.0F, 0.0F, this.width, 2, 32, 2);
+        drawContext.blit(RenderPipelines.GUI_TEXTURED, Screen.FOOTER_SEPARATOR, 0, this.height - this.layout.getFooterHeight(), 0.0F, 0.0F, this.width, 2, 32, 2);
 
         drawContext.drawCenteredString(this.font, this.pageState, this.width / 2, this.height / 6 + 126, 0xFFFFFFFF);
     }
@@ -284,14 +295,10 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent mouseButtonEvent, boolean doubleClick) {
-        boolean bl = super.mouseClicked(mouseButtonEvent, doubleClick);
-        if (this.tabManager.getCurrentTab() instanceof OptionsTab tab) {
-            if (tab.index() != this.tabIndex) {
-                this.tabIndex = tab.index();
-                this.replaceButtons();
-            }
-        }
-        return bl;
+        boolean clicked = super.mouseClicked(mouseButtonEvent, doubleClick);
+        this.checkTabSwitch();
+
+        return clicked;
     }
 
     @Override
@@ -315,7 +322,10 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
 
         }
 
-        return super.keyPressed(keyEvent);
+        boolean pressed = super.keyPressed(keyEvent);
+        this.checkTabSwitch();
+
+        return pressed;
     }
 
     @Override
@@ -331,27 +341,6 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
         }
 
         return OK;
-    }
-
-    private record OptionsTab(Component title, int index) implements Tab {
-        @Override
-        public Component getTabTitle() {
-            return this.title;
-        }
-
-        @Override
-        public Component getTabExtraNarration() {
-            return Component.empty();
-        }
-
-        @Override
-        public void visitChildren(Consumer<AbstractWidget> consumer) {
-        }
-
-        @Override
-        public void doLayout(ScreenRectangle screenRectangle) {
-        }
-
     }
 
     private void newSeed() {
