@@ -2,7 +2,6 @@ package com.mamiyaotaru.voxelmap;
 
 import com.mamiyaotaru.voxelmap.gui.overridden.EnumOptionsMinimap;
 import com.mamiyaotaru.voxelmap.interfaces.ISubSettingsManager;
-import com.mojang.serialization.DataResult;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -72,10 +71,11 @@ public class RadarSettingsManager implements ISubSettingsManager {
 
         this.hiddenMobs.clear();
         for (String s : mobsToHide) {
-            DataResult<Identifier> location = Identifier.read(s);
-            if (location.isSuccess()) {
-                this.hiddenMobs.add(location.getOrThrow());
-            }
+            Identifier.read(s).ifSuccess(identifier -> {
+                if (!identifier.getPath().isEmpty()) {
+                    this.hiddenMobs.add(identifier);
+                }
+            });
         }
     }
 
