@@ -17,7 +17,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.PlayerModelPart;
 
@@ -84,15 +83,14 @@ public class Radar implements IRadar {
     }
 
     private boolean isEntityShown(Entity entity) {
-        if (entity == null || entity.equals(VoxelConstants.getPlayer()) || entity.isInvisibleTo(VoxelConstants.getPlayer())) {
+        if (!(entity instanceof LivingEntity) || entity.equals(VoxelConstants.getPlayer()) || entity.isInvisibleTo(VoxelConstants.getPlayer())) {
             return false;
         }
 
         boolean playersShown = (this.options.radarAllowed || this.options.radarPlayersAllowed) && this.options.showPlayers;
-        boolean hostilesShown = (this.options.radarAllowed || this.options.radarMobsAllowed) && this.options.showHostiles;
-        boolean neutralsShown = (this.options.radarAllowed || this.options.radarMobsAllowed) && this.options.showNeutrals;
+        boolean mobsShown = (this.options.radarAllowed || this.options.radarMobsAllowed) && this.options.showMobs;
 
-        return (playersShown && this.isPlayer(entity)) || (hostilesShown && this.isHostile(entity)) || (neutralsShown && this.isNeutral(entity));
+        return (playersShown && MobCategory.isPlayer(entity)) || (mobsShown && !MobCategory.isPlayer(entity));
     }
 
     public void calculateMobs() {
@@ -273,18 +271,6 @@ public class Radar implements IRadar {
             }
         }
         guiGraphics.pose().popMatrix();
-    }
-
-    private boolean isPlayer(Entity entity) {
-        return MobCategory.isPlayer(entity);
-    }
-
-    private boolean isHostile(Entity entity) {
-        return (entity instanceof Enemy) || MobCategory.isHostile(entity);
-    }
-
-    private boolean isNeutral(Entity entity) {
-        return !(entity instanceof Enemy) && MobCategory.isNeutral(entity);
     }
 
     public void onJoinServer() {

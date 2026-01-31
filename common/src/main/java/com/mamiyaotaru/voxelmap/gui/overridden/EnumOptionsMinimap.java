@@ -29,7 +29,7 @@ public enum EnumOptionsMinimap {
     COLOR_PICKER_MODE("options.minimap.colorPickerMode", false, false, true),
     RADAR_MODE("options.minimap.radar.radarMode", false, false, true),
     SHOW_RADAR("options.minimap.radar.showRadar", false, true, false),
-    SHOW_MOBS("options.minimap.radar.showMobs", false, false, true),
+    SHOW_MOBS("options.minimap.radar.showMobs", false, true, false),
     SHOW_PLAYERS("options.minimap.radar.showPlayers", false, true, false),
     SHOW_PLAYER_HELMETS("options.minimap.radar.showPlayerHelmets", false, true, false),
     SHOW_MOB_HELMETS("options.minimap.radar.showMobHelmets", false, true, false),

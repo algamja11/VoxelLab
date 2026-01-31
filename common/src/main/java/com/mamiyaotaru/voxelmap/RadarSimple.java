@@ -6,11 +6,8 @@ import com.mamiyaotaru.voxelmap.util.Contact;
 import com.mamiyaotaru.voxelmap.util.GameVariableAccessShim;
 import com.mamiyaotaru.voxelmap.util.ImageUtils;
 import com.mamiyaotaru.voxelmap.util.LayoutVariables;
-import com.mamiyaotaru.voxelmap.util.MobCategory;
 import com.mamiyaotaru.voxelmap.util.VoxelMapPipelines;
 import com.mojang.blaze3d.platform.NativeImage;
-import java.util.ArrayList;
-import java.util.Comparator;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.TextureContents;
@@ -19,8 +16,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
+
+import java.util.ArrayList;
 
 public class RadarSimple implements IRadar {
     private LayoutVariables layoutVariables;
@@ -95,36 +92,37 @@ public class RadarSimple implements IRadar {
     }
 
     public void calculateMobs() {
-        this.contacts.clear();
-
-        for (Entity entity : VoxelConstants.getClientWorld().entitiesForRendering()) {
-            try {
-                if (entity != null && !entity.isInvisibleTo(VoxelConstants.getPlayer()) && (this.options.showHostiles && (this.options.radarAllowed || this.options.radarMobsAllowed) && MobCategory.isHostile(entity)
-                        || this.options.showPlayers && (this.options.radarAllowed || this.options.radarPlayersAllowed) && MobCategory.isPlayer(entity) || this.options.showNeutrals && this.options.radarMobsAllowed && MobCategory.isNeutral(entity))) {
-                    int wayX = GameVariableAccessShim.xCoord() - (int) entity.position().x();
-                    int wayZ = GameVariableAccessShim.zCoord() - (int) entity.position().z();
-                    int wayY = GameVariableAccessShim.yCoord() - (int) entity.position().y();
-
-                    double scale = this.layoutVariables.zoomScaleAdjusted;
-                    boolean inRange;
-                    if (!this.minimapOptions.squareMap) {
-                        inRange = (wayX * wayX + wayZ * wayZ) / (scale * scale) < 32.0 * 32.0;
-                    } else {
-                        inRange = Mth.abs(wayX) / scale < 32.0 || Mth.abs(wayZ) / scale < 32.0;
-                    }
-                    inRange = inRange && Mth.abs(wayY) / scale < 32.0;
-
-                    if (inRange) {
-                        Contact contact = new Contact((LivingEntity) entity, MobCategory.forEntity(entity));
-                        this.contacts.add(contact);
-                    }
-                }
-            } catch (Exception var11) {
-                VoxelConstants.getLogger().error(var11.getLocalizedMessage(), var11);
-            }
-        }
-
-        this.contacts.sort(Comparator.comparingDouble(contact -> contact.y));
+        // TODO: implement simple radar
+//        this.contacts.clear();
+//
+//        for (Entity entity : VoxelConstants.getClientWorld().entitiesForRendering()) {
+//            try {
+//                if (entity != null && !entity.isInvisibleTo(VoxelConstants.getPlayer()) && (this.options.showHostiles && (this.options.radarAllowed || this.options.radarMobsAllowed) && MobCategory.isHostile(entity)
+//                        || this.options.showPlayers && (this.options.radarAllowed || this.options.radarPlayersAllowed) && MobCategory.isPlayer(entity) || this.options.showNeutrals && this.options.radarMobsAllowed && MobCategory.isNeutral(entity))) {
+//                    int wayX = GameVariableAccessShim.xCoord() - (int) entity.position().x();
+//                    int wayZ = GameVariableAccessShim.zCoord() - (int) entity.position().z();
+//                    int wayY = GameVariableAccessShim.yCoord() - (int) entity.position().y();
+//
+//                    double scale = this.layoutVariables.zoomScaleAdjusted;
+//                    boolean inRange;
+//                    if (!this.minimapOptions.squareMap) {
+//                        inRange = (wayX * wayX + wayZ * wayZ) / (scale * scale) < 32.0 * 32.0;
+//                    } else {
+//                        inRange = Mth.abs(wayX) / scale < 32.0 || Mth.abs(wayZ) / scale < 32.0;
+//                    }
+//                    inRange = inRange && Mth.abs(wayY) / scale < 32.0;
+//
+//                    if (inRange) {
+//                        Contact contact = new Contact((LivingEntity) entity, MobCategory.forEntity(entity));
+//                        this.contacts.add(contact);
+//                    }
+//                }
+//            } catch (Exception var11) {
+//                VoxelConstants.getLogger().error(var11.getLocalizedMessage(), var11);
+//            }
+//        }
+//
+//        this.contacts.sort(Comparator.comparingDouble(contact -> contact.y));
     }
 
     public void renderMapMobs(GuiGraphics guiGraphics, int x, int y, float scaleProj) {
