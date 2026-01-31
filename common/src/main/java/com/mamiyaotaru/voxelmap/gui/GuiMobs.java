@@ -111,13 +111,14 @@ public class GuiMobs extends GuiScreenMinimap {
         }
         this.lastTabIndex = this.tabIndex;
 
-        boolean mobsTab = this.tabIndex == 0;
-        this.currentList = mobsTab ? this.mobsList : this.presetsList;
-        this.addTabWidget(this.currentList);
+        boolean isMobsTab = this.tabIndex == 0;
 
         this.selectedMobId = null;
+        this.currentList = isMobsTab ? this.mobsList : this.presetsList;
+        this.addTabWidget(this.currentList);
+
         this.filter.setValue("");
-        this.filter.active = mobsTab;
+        this.filter.active = isMobsTab;
         this.updateListFilter("");
     }
 
