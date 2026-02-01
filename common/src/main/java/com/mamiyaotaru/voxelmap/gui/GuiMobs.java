@@ -4,6 +4,7 @@ import com.mamiyaotaru.voxelmap.RadarSettingsManager;
 import com.mamiyaotaru.voxelmap.VoxelMap;
 import com.mamiyaotaru.voxelmap.gui.overridden.GuiScreenMinimap;
 import com.mamiyaotaru.voxelmap.gui.overridden.GuiSimpleTab;
+import com.mamiyaotaru.voxelmap.util.MobFilter;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -39,7 +40,7 @@ public class GuiMobs extends GuiScreenMinimap {
 
     private AbstractSelectionList<?> currentList;
     private GuiSlotMobs mobsList;
-    private GuiSlotMobPresets presetsList;
+    private GuiSlotMobFilters presetsList;
     protected EditBox filter;
     private Button buttonEnable;
     private Button buttonDisable;
@@ -60,7 +61,7 @@ public class GuiMobs extends GuiScreenMinimap {
 
         this.tabNavigationBar = TabNavigationBar.builder(this.tabManager, this.width).addTabs(new Tab[] {
                 new GuiSimpleTab(Component.translatable("options.minimap.mobs.tab.toggleMobs"), 0),
-                new GuiSimpleTab(Component.translatable("options.minimap.mobs.tab.presets"), 1)}).build();
+                new GuiSimpleTab(Component.translatable("options.minimap.mobs.tab.filters"), 1)}).build();
 
         this.tabNavigationBar.setFocused(true);
         this.tabNavigationBar.selectTab(this.tabIndex, false);
@@ -70,7 +71,7 @@ public class GuiMobs extends GuiScreenMinimap {
         int tabBottom = this.tabNavigationBar.getRectangle().bottom();
 
         this.mobsList = new GuiSlotMobs(this);
-        this.presetsList = new GuiSlotMobPresets(this);
+        this.presetsList = new GuiSlotMobFilters(this);
         this.currentList = this.mobsList;
 
         ScreenRectangle tabAreaRect = new ScreenRectangle(0, tabBottom, this.width, this.currentList.getY() + this.currentList.getHeight());
@@ -189,6 +190,10 @@ public class GuiMobs extends GuiScreenMinimap {
 
     protected void toggleMobVisibility() {
         setMobEnabled(selectedMobId, !isMobEnabled(selectedMobId));
+    }
+
+    protected void setMobFilter(MobFilter filter) {
+        VoxelMap.radarOptions.mobFilter = filter;
     }
 
     @Override

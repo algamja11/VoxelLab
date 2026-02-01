@@ -2,6 +2,7 @@ package com.mamiyaotaru.voxelmap;
 
 import com.mamiyaotaru.voxelmap.gui.overridden.EnumOptionsMinimap;
 import com.mamiyaotaru.voxelmap.interfaces.ISubSettingsManager;
+import com.mamiyaotaru.voxelmap.util.MobFilter;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -31,6 +32,7 @@ public class RadarSettingsManager implements ISubSettingsManager {
     public boolean radarAllowed = true;
     public boolean radarPlayersAllowed = true;
     public boolean radarMobsAllowed = true;
+    public MobFilter mobFilter = MobFilter.DANGEROUS_MOBS;
     public final HashSet<Identifier> hiddenMobs = new HashSet<>();
 
     float fontScale = 1.0F;
@@ -56,6 +58,7 @@ public class RadarSettingsManager implements ISubSettingsManager {
                     case "Outline Mob Icons" -> this.outlines = Boolean.parseBoolean(curLine[1]);
                     case "Font Scale" -> this.fontScale = Float.parseFloat(curLine[1]);
                     case "Show Facing" -> this.showFacing = Boolean.parseBoolean(curLine[1]);
+                    case "Mob Filter" -> this.mobFilter = Enum.valueOf(MobFilter.class, curLine[1]);
                     case "Hidden Mobs" -> this.applyHiddenMobSettings(curLine[1]);
                 }
             }
@@ -93,6 +96,7 @@ public class RadarSettingsManager implements ISubSettingsManager {
         out.println("Outline Mob Icons:" + this.outlines);
         out.println("Font Scale:" + this.fontScale);
         out.println("Show Facing:" + this.showFacing);
+        out.println("Mob Filter:" + this.mobFilter);
         out.print("Hidden Mobs:");
         for (Identifier mob : hiddenMobs) {
             out.print(mob.toString() + ",");

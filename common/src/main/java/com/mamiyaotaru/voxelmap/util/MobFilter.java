@@ -11,7 +11,8 @@ import net.minecraft.world.entity.monster.Enemy;
 import java.util.HashMap;
 import java.util.HashSet;
 
-public enum MobPreset {
+public enum MobFilter {
+    ALL_MOBS,
     DANGEROUS_MOBS,
     NON_DANGEROUS_MOBS,
     HOSTILE_MOBS,
@@ -19,16 +20,16 @@ public enum MobPreset {
     FRIENDLY_MOBS;
 
     private static final HashSet<Identifier> ALL_ENTITIES = new HashSet<>();
-    private static final HashMap<MobPreset, HashSet<Identifier>> MATCHING_ENTITIES = new HashMap<>();
-    private static final HashMap<MobPreset, HashSet<Identifier>> MISMATCHING_ENTITIES = new HashMap<>();
+    private static final HashMap<MobFilter, HashSet<Identifier>> MATCHING_ENTITIES = new HashMap<>();
+    private static final HashMap<MobFilter, HashSet<Identifier>> MISMATCHING_ENTITIES = new HashMap<>();
 
     private static void init() {
         if (!ALL_ENTITIES.isEmpty()) {
             return;
         }
 
-        for (MobPreset preset : MobPreset.values()) {
-            MATCHING_ENTITIES.put(preset, new HashSet<>());
+        for (MobFilter filter : MobFilter.values()) {
+            MATCHING_ENTITIES.put(filter, new HashSet<>());
         }
 
         BuiltInRegistries.ENTITY_TYPE.entrySet().forEach(entry -> {
@@ -38,35 +39,40 @@ public enum MobPreset {
             if (tempEntity instanceof LivingEntity) {
                 ALL_ENTITIES.add(identifier);
 
-                for (MobPreset preset : MobPreset.values()) {
-                    if (matchesPreset(tempEntity, preset)) {
-                        MATCHING_ENTITIES.get(preset).add(identifier);
+                for (MobFilter filter : MobFilter.values()) {
+                    if (matchesFilter(tempEntity, filter)) {
+                        MATCHING_ENTITIES.get(filter).add(identifier);
                     }
                 }
             }
         });
 
-        for (MobPreset preset : MobPreset.values()) {
+        for (MobFilter filter : MobFilter.values()) {
             HashSet<Identifier> mismatch = new HashSet<>(ALL_ENTITIES);
-            mismatch.removeAll(MATCHING_ENTITIES.get(preset));
+            mismatch.removeAll(MATCHING_ENTITIES.get(filter));
 
-            MISMATCHING_ENTITIES.put(preset, mismatch);
+            MISMATCHING_ENTITIES.put(filter, mismatch);
         }
     }
 
-    public static HashSet<Identifier> getMatchingEntities(MobPreset preset) {
+    public static HashSet<Identifier> getMatchingEntities(MobFilter filter) {
         init();
-        return new HashSet<>(MATCHING_ENTITIES.get(preset));
+        return new HashSet<>(MATCHING_ENTITIES.get(filter));
     }
 
-    public static HashSet<Identifier> getMismatchingEntities(MobPreset preset) {
+    public static HashSet<Identifier> getMismatchingEntities(MobFilter filter) {
         init();
-        return new HashSet<>(MISMATCHING_ENTITIES.get(preset));
+        return new HashSet<>(MISMATCHING_ENTITIES.get(filter));
     }
 
+    public static boolean matchesFilter(Identifier identifier, MobFilter filter) {
+        init();
+        return MATCHING_ENTITIES.get(filter).contains(identifier);
+    }
 
-    private static boolean matchesPreset(Entity entity, MobPreset preset) {
-        return switch (preset) {
+    public static boolean matchesFilter(Entity entity, MobFilter filter) {
+        return switch (filter) {
+            case ALL_MOBS -> true;
             case DANGEROUS_MOBS -> entity instanceof Enemy || MobCategory.isHostile(entity);
             case NON_DANGEROUS_MOBS -> (!(entity instanceof Enemy) && !MobCategory.isHostile(entity));
             case HOSTILE_MOBS -> MobCategory.isHostile(entity);

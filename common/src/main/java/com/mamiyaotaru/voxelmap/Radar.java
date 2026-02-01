@@ -6,6 +6,7 @@ import com.mamiyaotaru.voxelmap.util.Contact;
 import com.mamiyaotaru.voxelmap.util.GameVariableAccessShim;
 import com.mamiyaotaru.voxelmap.util.LayoutVariables;
 import com.mamiyaotaru.voxelmap.util.MobCategory;
+import com.mamiyaotaru.voxelmap.util.MobFilter;
 import com.mamiyaotaru.voxelmap.util.TextUtils;
 import com.mamiyaotaru.voxelmap.util.VoxelMapPipelines;
 import net.minecraft.client.Minecraft;
@@ -90,7 +91,7 @@ public class Radar implements IRadar {
         boolean playersShown = (this.options.radarAllowed || this.options.radarPlayersAllowed) && this.options.showPlayers;
         boolean mobsShown = (this.options.radarAllowed || this.options.radarMobsAllowed) && this.options.showMobs;
 
-        return (playersShown && MobCategory.isPlayer(entity)) || (mobsShown && !MobCategory.isPlayer(entity));
+        return (playersShown && MobCategory.isPlayer(entity)) || (mobsShown && MobFilter.matchesFilter(entity, this.options.mobFilter));
     }
 
     public void calculateMobs() {
