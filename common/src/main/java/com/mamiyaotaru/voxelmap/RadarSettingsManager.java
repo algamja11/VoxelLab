@@ -217,8 +217,10 @@ public class RadarSettingsManager implements ISubSettingsManager {
     }
 
     public void setMobFilter(MobFilter filter) {
-        mobFilter = filter;
-        overriddenMobs.clear();
+        if (mobFilter != filter) {
+            mobFilter = filter;
+            overriddenMobs.clear();
+        }
     }
 
     public void setMobEnabled(LivingEntity entity, boolean enabled) {

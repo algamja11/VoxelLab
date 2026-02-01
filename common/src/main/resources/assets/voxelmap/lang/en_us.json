@@ -95,7 +95,7 @@
   "options.minimap.waypoints.showWaypointDistances.besideName": "Beside Name Label",
   "options.minimap.waypoints.showWaypointDistances.belowName": "Below Name Label",
   "options.minimap.mobs.title": "Show or Hide Individual Mob Types",
-  "options.minimap.mobs.tab.toggleMobs": "Toggle Mobs",
+  "options.minimap.mobs.tab.toggleMobs": "Visibility",
   "options.minimap.mobs.tab.filters": "Filters",
   "options.minimap.mobs.enable": "Show Mob Icon",
   "options.minimap.mobs.disable": "Hide Mob Icon",
