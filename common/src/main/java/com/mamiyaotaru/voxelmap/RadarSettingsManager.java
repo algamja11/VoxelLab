@@ -1,5 +1,7 @@
 package com.mamiyaotaru.voxelmap;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.mamiyaotaru.voxelmap.gui.overridden.EnumOptionsMinimap;
 import com.mamiyaotaru.voxelmap.interfaces.ISubSettingsManager;
 import com.mamiyaotaru.voxelmap.util.MobFilter;
@@ -14,7 +16,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.HashSet;
+import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RadarSettingsManager implements ISubSettingsManager {
     private boolean somethingChanged;
@@ -33,9 +38,10 @@ public class RadarSettingsManager implements ISubSettingsManager {
     public boolean radarPlayersAllowed = true;
     public boolean radarMobsAllowed = true;
     public MobFilter mobFilter = MobFilter.DANGEROUS_MOBS;
-    public final HashSet<Identifier> hiddenMobs = new HashSet<>();
+    public final ConcurrentHashMap<Identifier, Boolean> overriddenMobs = new ConcurrentHashMap<>();
 
     float fontScale = 1.0F;
+    private final Gson gson = new Gson();
 
     @Override
     public void loadSettings(File settingsFile) {
@@ -59,7 +65,7 @@ public class RadarSettingsManager implements ISubSettingsManager {
                     case "Font Scale" -> this.fontScale = Float.parseFloat(curLine[1]);
                     case "Show Facing" -> this.showFacing = Boolean.parseBoolean(curLine[1]);
                     case "Mob Filter" -> this.mobFilter = Enum.valueOf(MobFilter.class, curLine[1]);
-                    case "Hidden Mobs" -> this.applyHiddenMobSettings(curLine[1]);
+                    case "Overridden Mobs" -> this.readOverriddenMobs(curLine[1]);
                 }
             }
 
@@ -69,17 +75,25 @@ public class RadarSettingsManager implements ISubSettingsManager {
 
     }
 
-    private void applyHiddenMobSettings(String hiddenMobs) {
-        String[] mobsToHide = hiddenMobs.split(",");
+    private void readOverriddenMobs(String list) {
+        Type typeToken = new TypeToken<Map<String, Boolean>>(){}.getType();
+        Map<String, Boolean> stringMap = this.gson.fromJson(list, typeToken);
 
-        this.hiddenMobs.clear();
-        for (String s : mobsToHide) {
-            Identifier.read(s).ifSuccess(identifier -> {
-                if (!identifier.getPath().isEmpty()) {
-                    this.hiddenMobs.add(identifier);
-                }
+        this.overriddenMobs.clear();
+        stringMap.forEach((mobId, value) -> {
+            Identifier.read(mobId).ifSuccess(identifier -> {
+                this.overriddenMobs.put(identifier, value);
             });
-        }
+        });
+    }
+
+    private String writeOverriddenMobs() {
+        Map<String, Boolean> stringMap = new HashMap<>();
+        overriddenMobs.forEach((mobId, value) -> {
+            stringMap.put(mobId.toString(), value);
+        });
+
+        return this.gson.toJson(stringMap);
     }
 
     @Override
@@ -97,11 +111,7 @@ public class RadarSettingsManager implements ISubSettingsManager {
         out.println("Font Scale:" + this.fontScale);
         out.println("Show Facing:" + this.showFacing);
         out.println("Mob Filter:" + this.mobFilter);
-        out.print("Hidden Mobs:");
-        for (Identifier mob : hiddenMobs) {
-            out.print(mob.toString() + ",");
-        }
-        out.println();
+        out.println("Overridden Mobs:" + this.writeOverriddenMobs());
     }
 
     @Override
@@ -194,6 +204,37 @@ public class RadarSettingsManager implements ISubSettingsManager {
     }
 
     public boolean isMobEnabled(EntityType<?> type) {
-        return !hiddenMobs.contains(BuiltInRegistries.ENTITY_TYPE.getKey(type));
+        return isMobEnabled(BuiltInRegistries.ENTITY_TYPE.getKey(type));
+    }
+
+    public boolean isMobEnabled(Identifier identifier) {
+        Boolean override = overriddenMobs.get(identifier);
+        if (override != null) {
+            return override;
+        }
+
+        return MobFilter.matchesFilter(identifier, mobFilter);
+    }
+
+    public void setMobFilter(MobFilter filter) {
+        mobFilter = filter;
+        overriddenMobs.clear();
+    }
+
+    public void setMobEnabled(LivingEntity entity, boolean enabled) {
+        setMobEnabled(entity.getType(), enabled);
+    }
+
+    public void setMobEnabled(EntityType<?> type, boolean enabled) {
+        setMobEnabled(BuiltInRegistries.ENTITY_TYPE.getKey(type), enabled);
+    }
+
+    public void setMobEnabled(Identifier identifier, boolean enabled) {
+        if (enabled == MobFilter.matchesFilter(identifier, mobFilter)) {
+            overriddenMobs.remove(identifier);
+            return;
+        }
+
+        overriddenMobs.put(identifier, enabled);
     }
 }

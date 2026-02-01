@@ -103,6 +103,7 @@
   "options.minimap.mobs.disabled": "This icon is not displayed.",
   "options.minimap.mobs.filters.header.voxelMap": "VoxelMap",
   "options.minimap.mobs.filters.header.default": "Default",
+  "options.minimap.mobs.filters.overrides": "Overrides: %s",
   "options.minimap.mobs.filters.custom": "Custom",
   "options.minimap.mobs.filters.allMobs": "All Mobs",
   "options.minimap.mobs.filters.dangerousMobs": "Dangerous Mobs",

@@ -177,15 +177,11 @@ public class GuiMobs extends GuiScreenMinimap {
     }
 
     private boolean isMobEnabled(Identifier mobId) {
-        return !VoxelMap.radarOptions.hiddenMobs.contains(mobId);
+        return VoxelMap.radarOptions.isMobEnabled(mobId);
     }
 
     private void setMobEnabled(Identifier mobId, boolean enabled) {
-        if (enabled) {
-            VoxelMap.radarOptions.hiddenMobs.remove(mobId);
-        } else {
-            VoxelMap.radarOptions.hiddenMobs.add(mobId);
-        }
+        VoxelMap.radarOptions.setMobEnabled(mobId, enabled);
     }
 
     protected void toggleMobVisibility() {
@@ -193,7 +189,7 @@ public class GuiMobs extends GuiScreenMinimap {
     }
 
     protected void setMobFilter(MobFilter filter) {
-        VoxelMap.radarOptions.mobFilter = filter;
+        VoxelMap.radarOptions.setMobFilter(filter);
     }
 
     @Override

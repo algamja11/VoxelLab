@@ -103,6 +103,7 @@
   "options.minimap.mobs.disabled": "이 아이콘은 보여지지 않습니다.",
   "options.minimap.mobs.filters.header.voxelMap": "VoxelMap",
   "options.minimap.mobs.filters.header.default": "기본 설정",
+  "options.minimap.mobs.filters.overrides": "%s 개의 재정의",
   "options.minimap.mobs.filters.custom": "사용자 지정",
   "options.minimap.mobs.filters.allMobs": "모든 몹",
   "options.minimap.mobs.filters.dangerousMobs": "위험한 몹",

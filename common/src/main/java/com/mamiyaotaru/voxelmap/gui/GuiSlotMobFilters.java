@@ -95,13 +95,19 @@ class GuiSlotMobFilters extends AbstractSelectionList<GuiSlotMobFilters.BasicIte
 
         @Override
         public void renderContent(GuiGraphics drawContext, int mouseX, int mouseY, boolean hovered, float tickDelta) {
-            drawContext.drawString(this.parentGui.getFont(), this.name, this.getX() + 4, this.getY() + 5, 0xFFFFFFFF);
-
             boolean isEnabled = VoxelMap.radarOptions.mobFilter == this.filter;
+
+            int overrideCount = VoxelMap.radarOptions.overriddenMobs.size();
+            String suffix = (isEnabled && overrideCount > 0) ? (" (" + I18n.get("options.minimap.mobs.filters.overrides", overrideCount) + ")") : "";
+            drawContext.drawString(this.parentGui.getFont(), this.name + suffix, this.getX() + 4, this.getY() + 5, 0xFFFFFFFF);
 
             this.filterToggle.setPosition(this.getX() + this.getWidth() - 20, this.getY());
             this.filterToggle.setIconForRender(RenderPipelines.GUI_TEXTURED, isEnabled ? VoxelConstants.getCheckMarkerTexture() : VoxelConstants.getCrossMarkerTexture(), 0xFFFFFFFF);
             this.filterToggle.render(drawContext, mouseX, mouseY, tickDelta);
+
+            if (mouseX >= this.getX() && mouseX <= this.getX() + this.getWidth() && mouseY >= this.getY() && mouseY <= this.getY() + this.getHeight()) {
+                // TODO: render tooltip
+            }
         }
 
         @Override
