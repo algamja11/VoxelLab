@@ -1502,7 +1502,7 @@ public class Map implements Runnable, IChangeObserver {
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().identity();
 
-        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_ANY_DEPTH_PIPELINE, stencilTexture);
+        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_NO_DEPTH_TEST, stencilTexture);
         VoxelMapRenderer.addVertex(-256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
         VoxelMapRenderer.addVertex(256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
         VoxelMapRenderer.addVertex(256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
@@ -1517,7 +1517,7 @@ public class Map implements Runnable, IChangeObserver {
         guiGraphics.pose().scale(scale, scale);
         guiGraphics.pose().translate(-percentX * 512.0F / 64.0F, percentY * 512.0F / 64.0F);
 
-        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_ANY_DEPTH_DST_ALPHA_PIPELINE, mapImages[this.zoom]);
+        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST, mapImages[this.zoom]);
 
         Vector3f vector3f = new Vector3f();
         guiGraphics.pose().transform(-256, 256, 1, vector3f);
@@ -1637,7 +1637,7 @@ public class Map implements Runnable, IChangeObserver {
                     guiGraphics.pose().translate(0.0f, -hypot);
                 }
 
-                icon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LESS_OR_EQUAL_DEPTH_PIPELINE, x - 4, y - 4, 8, 8, color);
+                icon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - 4, y - 4, 8, 8, color);
             } catch (Exception var40) {
                 this.showMessage("Error: marker overlay not found!");
             } finally {
@@ -1661,7 +1661,7 @@ public class Map implements Runnable, IChangeObserver {
                 guiGraphics.pose().translate(0.0f, -hypot);
                 guiGraphics.pose().rotate(locate * Mth.DEG_TO_RAD);
 
-                icon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LESS_OR_EQUAL_DEPTH_PIPELINE, x - 4, y - 4, 8, 8, color);
+                icon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - 4, y - 4, 8, 8, color);
             } catch (Exception var42) {
                 this.showMessage("Error: waypoint overlay not found!");
             } finally {
@@ -1729,7 +1729,7 @@ public class Map implements Runnable, IChangeObserver {
 
     private void drawMapFrame(GuiGraphics guiGraphics, int x, int y, boolean squaremap) {
         Identifier frameResource = squaremap ? resourceSquareMapFrame : resourceRoundMapFrame;
-        guiGraphics.blit(VoxelMapPipelines.GUI_TEXTURED_LESS_OR_EQUAL_DEPTH_PIPELINE, frameResource, x - 32, y - 32, 0, 0, 64, 64, 64, 64);
+        guiGraphics.blit(VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, frameResource, x - 32, y - 32, 0, 0, 64, 64, 64, 64);
     }
 
     private void drawDirections(GuiGraphics drawContext, int x, int y, float scaleProj) {
