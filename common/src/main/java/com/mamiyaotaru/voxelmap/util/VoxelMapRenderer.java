@@ -50,10 +50,13 @@ public class VoxelMapRenderer {
         bufferBuilder = tessellator.begin(mode, pipeline.getVertexFormat());
     }
 
-    public static VertexConsumer addVertex(float x, float y, float z) {
+    public static BufferBuilder getBufferBuilder() {
         ensureBatching();
+        return bufferBuilder;
+    }
 
-        return bufferBuilder.addVertex(x, y, z);
+    public static VertexConsumer addVertex(float x, float y, float z) {
+        return getBufferBuilder().addVertex(x, y, z);
     }
 
     public static void endBatch() {
@@ -66,11 +69,11 @@ public class VoxelMapRenderer {
                 return;
             }
 
-            GpuBuffer vertexBuffer = RenderSystem.getDevice().createBuffer(() -> "VoxelMap Immediate Vertex Buffer" + bufferCreationCount, 40, meshData.vertexBuffer());
+            GpuBuffer vertexBuffer = RenderSystem.getDevice().createBuffer(() -> "VoxelMap Immediate Vertex Buffer" + bufferCreationCount, GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST, meshData.vertexBuffer());
             GpuBuffer indexBuffer;
             VertexFormat.IndexType indexType;
             if (meshData.indexBuffer() != null) {
-                indexBuffer = RenderSystem.getDevice().createBuffer(() -> "VoxelMap Immediate Index Buffer" + bufferCreationCount, 72, meshData.indexBuffer());
+                indexBuffer = RenderSystem.getDevice().createBuffer(() -> "VoxelMap Immediate Index Buffer" + bufferCreationCount, GpuBuffer.USAGE_INDEX | GpuBuffer.USAGE_COPY_DST, meshData.indexBuffer());
                 indexType = meshData.drawState().indexType();
             } else {
                 RenderSystem.AutoStorageIndexBuffer autoStorageIndexBuffer = RenderSystem.getSequentialBuffer(meshData.drawState().mode());
