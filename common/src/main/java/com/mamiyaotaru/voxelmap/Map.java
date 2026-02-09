@@ -34,7 +34,6 @@ import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.textures.TextureFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -45,7 +44,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.TextureContents;
 import net.minecraft.client.resources.language.I18n;
@@ -76,7 +74,6 @@ import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.joml.Matrix3x2fStack;
-import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import java.util.ArrayList;
@@ -1505,6 +1502,7 @@ public class Map implements Runnable, IChangeObserver {
         VoxelMapRenderer.addVertex(-256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
         VoxelMapRenderer.endBatch();
 
+        guiGraphics.pose().pushMatrix();
         if (!this.options.rotates) {
             guiGraphics.pose().rotate(-this.rotationFactor * Mth.DEG_TO_RAD);
         } else {
@@ -1520,6 +1518,13 @@ public class Map implements Runnable, IChangeObserver {
         VoxelMapRenderer.addVertex(guiGraphics.pose(), 256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
         VoxelMapRenderer.addVertex(guiGraphics.pose(), -256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
         VoxelMapRenderer.endBatch();
+
+        guiGraphics.pose().popMatrix();
+
+        if (VoxelConstants.getVoxelMapInstance().getRadar() != null) {
+            this.layoutVariables.updateVars(scScale, x, y, this.zoomScale, this.zoomScaleAdjusted);
+            VoxelConstants.getVoxelMapInstance().getRadar().onTickInGame(guiGraphics, this.layoutVariables, scaleProj);
+        }
 
         VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_NO_DEPTH_TEST);
         VoxelMapRenderer.bindTexture(frameTexture);
@@ -1542,11 +1547,6 @@ public class Map implements Runnable, IChangeObserver {
         guiGraphics.pose().popMatrix();
 
         VoxelMapGuiGraphics.blitFloat(guiGraphics, RenderPipelines.GUI_TEXTURED, fboTextureView, x - 32, y - 32, 64, 64, 0, 1, 0, 1, 0xffffffff);
-
-        if (VoxelConstants.getVoxelMapInstance().getRadar() != null) {
-            this.layoutVariables.updateVars(scScale, x, y, this.zoomScale, this.zoomScaleAdjusted);
-            VoxelConstants.getVoxelMapInstance().getRadar().onTickInGame(guiGraphics, this.layoutVariables, 1.0F);
-        }
 
         double guiScale = (double) minecraft.getWindow().getWidth() / this.scWidth;
         minTablistOffset = guiScale * 63;

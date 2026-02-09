@@ -30,7 +30,15 @@ public class VoxelMapPipelines {
     public static final RenderPipeline GUI_TEXTURED_LEQUAL_DEPTH_TEST = RenderPipeline
             .builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_lequal_depth_test"))
-            .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST).build();
+            .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
+            .build();
+
+    public static final RenderPipeline GUI_TEXTURED_MASKED_LEQUAL_DEPTH_TEST = RenderPipeline
+            .builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_lequal_depth_test"))
+            .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
+            .withColorWrite(true, false)
+            .build();
 
     public static final RenderPipeline WAYPOINT_BEAM = RenderPipeline.builder(RenderPipelines.MATRICES_PROJECTION_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/waypoint_beam"))

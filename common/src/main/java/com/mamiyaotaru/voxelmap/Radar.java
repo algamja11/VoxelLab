@@ -2,12 +2,15 @@ package com.mamiyaotaru.voxelmap;
 
 import com.mamiyaotaru.voxelmap.entityrender.EntityMapImageManager;
 import com.mamiyaotaru.voxelmap.interfaces.IRadar;
+import com.mamiyaotaru.voxelmap.textures.Sprite;
 import com.mamiyaotaru.voxelmap.util.Contact;
 import com.mamiyaotaru.voxelmap.util.GameVariableAccessShim;
 import com.mamiyaotaru.voxelmap.util.LayoutVariables;
 import com.mamiyaotaru.voxelmap.util.TextUtils;
 import com.mamiyaotaru.voxelmap.util.VoxelMapMobCategory;
 import com.mamiyaotaru.voxelmap.util.VoxelMapPipelines;
+import com.mamiyaotaru.voxelmap.util.VoxelMapRenderer;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -115,7 +118,7 @@ public class Radar implements IRadar {
             return false;
         }
 
-        double maxDist = 28.5 + cullDist;
+        double maxDist = 32.0 + cullDist;
         if (!minimapOptions.squareMap) {
             return (dx * dx + dz * dz) <= (maxDist * maxDist);
         } else {
@@ -186,6 +189,8 @@ public class Radar implements IRadar {
     }
 
     public void renderMapMobs(GuiGraphics guiGraphics, int x, int y, float scaleProj) {
+        scaleProj = 1.0f;
+
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().scale(scaleProj, scaleProj);
 
@@ -193,6 +198,9 @@ public class Radar implements IRadar {
         double lastX = GameVariableAccessShim.xCoordDouble();
         double lastZ = GameVariableAccessShim.zCoordDouble();
         double lastY = GameVariableAccessShim.yCoordDouble();
+
+        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_LEQUAL_DEPTH_TEST);
+        VoxelMapRenderer.bindTexture(EntityMapImageManager.resourceTextureAtlasMarker);
 
         for (Contact contact : this.contacts) {
             if (contact.icon == null) {
@@ -229,8 +237,9 @@ public class Radar implements IRadar {
             } else if (this.minimapOptions.oldNorth) {
                 contact.angle -= 90.0F;
             }
+            contact.angle = 180.0f - contact.angle;
 
-            double scaledDistance = contact.distance / zoomScale;
+            double scaledDistance = contact.distance / zoomScale * 8;
             if (this.isInRange(contact.entity, wayX, wayY, wayZ, 0.0)) {
                 try {
                     guiGraphics.pose().pushMatrix();
@@ -253,17 +262,19 @@ public class Radar implements IRadar {
 
                     float imageWidth = contact.icon.getIconWidth() / 8.0F;
                     float imageHeight = contact.icon.getIconHeight() / 8.0F;
-                    contact.icon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - (imageWidth / 2), y + yOffset - (imageHeight / 2), imageWidth, imageHeight, color);
+//                    contact.icon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - (imageWidth / 2), y + yOffset - (imageHeight / 2), imageWidth, imageHeight, color);
+                    drawQuad(guiGraphics, contact.icon, -(imageWidth / 2), yOffset - (imageHeight / 2), -2500.0F, imageWidth, imageHeight, color);
 
                     if (contact.armorIcon != null) {
                         float helmetWidth = contact.armorIcon.getIconWidth() / 8.0F;
                         float helmetHeight = contact.armorIcon.getIconHeight() / 8.0F;
                         float helmetOffset = Float.parseFloat(this.entityMapImageManager.getMobProperties(contact.entity).getProperty("helmetOffset", "0.0"));
 
-                        contact.armorIcon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - (helmetWidth / 2), y + yOffset + helmetOffset - (helmetHeight / 2), helmetWidth, helmetWidth, color);
+//                        contact.armorIcon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - (helmetWidth / 2), y + yOffset + helmetOffset - (helmetHeight / 2), helmetWidth, helmetWidth, color);
+                        drawQuad(guiGraphics, contact.armorIcon, -(helmetWidth / 2), helmetOffset - (helmetHeight / 2), -2500.0F, helmetWidth, helmetHeight, color);
                     }
 
-                    if (contact.name != null && ((this.options.showPlayerNames && contact.category == VoxelMapMobCategory.PLAYER) || (this.options.showMobNames && contact.category != VoxelMapMobCategory.PLAYER && contact.entity.hasCustomName()))) {
+                    if (contact.name != null && ((this.options.showPlayerNames && contact.category == VoxelMapMobCategory.PLAYER) || (this.options.showMobNames && contact.category != VoxelMapMobCategory.PLAYER))) {
                         float scaleFactor = this.options.fontScale / 4.0F;
                         guiGraphics.pose().scale(scaleFactor, scaleFactor);
 
@@ -280,6 +291,25 @@ public class Radar implements IRadar {
                 }
             }
         }
+        guiGraphics.pose().popMatrix();
+
+        VoxelMapRenderer.endBatch();
+    }
+
+    private void drawQuad(GuiGraphics guiGraphics, Sprite sprite, float x, float y, float z, float width, float height, int color) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().scale(512.0F / 64.0F, 512.0F / 64.0F);
+
+        float uMin = sprite.getMinU();
+        float uMax = sprite.getMaxU();
+        float vMin = sprite.getMinV();
+        float vMax = sprite.getMaxV();
+
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), x, y + height, z).setUv(uMin, vMin).setColor(color);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), x + width, y + height, z).setUv(uMax, vMin).setColor(color);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), x + width, y, z).setUv(uMax, vMax).setColor(color);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), x, y, z).setUv(uMin, vMax).setColor(color);
+
         guiGraphics.pose().popMatrix();
     }
 
