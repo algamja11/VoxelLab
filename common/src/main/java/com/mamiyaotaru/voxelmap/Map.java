@@ -1502,7 +1502,8 @@ public class Map implements Runnable, IChangeObserver {
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().identity();
 
-        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_NO_DEPTH_TEST, stencilTexture);
+        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_NO_DEPTH_TEST);
+        VoxelMapRenderer.bindTexture(stencilTexture);
         VoxelMapRenderer.addVertex(-256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
         VoxelMapRenderer.addVertex(256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
         VoxelMapRenderer.addVertex(256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
@@ -1517,7 +1518,8 @@ public class Map implements Runnable, IChangeObserver {
         guiGraphics.pose().scale(scale, scale);
         guiGraphics.pose().translate(-percentX * 512.0F / 64.0F, percentY * 512.0F / 64.0F);
 
-        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST, mapImages[this.zoom]);
+        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST);
+        VoxelMapRenderer.bindTexture(mapImages[this.zoom]);
 
         Vector3f vector3f = new Vector3f();
         guiGraphics.pose().transform(-256, 256, 1, vector3f);

@@ -25,10 +25,10 @@ import java.util.function.Supplier;
 
 public class VoxelMapRenderer {
     private static final Tesselator tessellator = new Tesselator(4096);
-    private static final ArrayList<RenderBuffer> renderBuffers = new ArrayList<>();
+    private static final ArrayList<DrawBatch> drawBatches = new ArrayList<>();
 
     private static boolean batching = false;
-    private static RenderBuffer renderBuffer;
+    private static DrawBatch drawBatch;
     private static BufferBuilder bufferBuilder;
 
     private static final GPUBufferPool vertexBufferPool = new GPUBufferPool();
@@ -40,17 +40,13 @@ public class VoxelMapRenderer {
         }
     }
 
-    public static void beginBatch(VertexFormat.Mode mode, RenderPipeline pipeline, AbstractTexture texture) {
-        beginBatch(mode, pipeline, texture.getTextureView(), texture.getSampler());
-    }
-
-    public static void beginBatch(VertexFormat.Mode mode, RenderPipeline pipeline, GpuTextureView textureView, GpuSampler sampler) {
+    public static void beginBatch(VertexFormat.Mode mode, RenderPipeline pipeline) {
         if (batching) {
             throw new IllegalStateException("Batch already active! Call endBatch() before beginBatch().");
         }
         batching = true;
 
-        renderBuffer = new RenderBuffer(pipeline, textureView, sampler);
+        drawBatch = new DrawBatch(pipeline);
         bufferBuilder = tessellator.begin(mode, pipeline.getVertexFormat());
     }
 
@@ -61,6 +57,16 @@ public class VoxelMapRenderer {
 
     public static VertexConsumer addVertex(float x, float y, float z) {
         return getBufferBuilder().addVertex(x, y, z);
+    }
+
+    public static void bindTexture(AbstractTexture texture) {
+        bindTexture(texture.getTextureView(), texture.getSampler());
+    }
+
+    public static void bindTexture(GpuTextureView textureView, GpuSampler sampler) {
+        ensureBatching();
+        drawBatch.textureView = textureView;
+        drawBatch.sampler = sampler;
     }
 
     public static void endBatch() {
@@ -83,15 +89,19 @@ public class VoxelMapRenderer {
                 indexType = autoStorageIndexBuffer.type();
             }
 
-            renderBuffer.setDataForRender(meshData, vertexBuffer, indexBuffer, indexType);
-            renderBuffers.add(renderBuffer);
+            drawBatch.setDataForRender(meshData, vertexBuffer, indexBuffer, indexType);
+            drawBatches.add(drawBatch);
         } finally {
             batching = false;
         }
     }
 
     public static void flush(String passName, GpuTextureView textureView) {
-        if (renderBuffers.isEmpty()) {
+        if (batching) {
+            throw new IllegalStateException("Cannot flush while a batch is active. Call endBatch() first.");
+        }
+
+        if (drawBatches.isEmpty()) {
             return;
         }
 
@@ -107,33 +117,39 @@ public class VoxelMapRenderer {
             RenderSystem.bindDefaultUniforms(renderPass);
             renderPass.setUniform("DynamicTransforms", gpuBufferSlice);
 
-            for (RenderBuffer renderBuffer : renderBuffers) {
-                renderPass.setVertexBuffer(0, renderBuffer.vertexBuffer);
-                renderPass.setIndexBuffer(renderBuffer.indexBuffer, renderBuffer.indexType);
+            for (DrawBatch drawBatch : drawBatches) {
+                renderPass.setVertexBuffer(0, drawBatch.vertexBuffer);
+                renderPass.setIndexBuffer(drawBatch.indexBuffer, drawBatch.indexType);
 
-                renderPass.setPipeline(renderBuffer.pipeline);
-                renderPass.bindTexture("Sampler0", renderBuffer.textureView, renderBuffer.sampler);
-                renderPass.drawIndexed(0, 0, renderBuffer.meshData.drawState().indexCount(), 1);
+                renderPass.setPipeline(drawBatch.pipeline);
+                renderPass.bindTexture("Sampler0", drawBatch.textureView, drawBatch.sampler);
+                renderPass.drawIndexed(0, 0, drawBatch.meshData.drawState().indexCount(), 1);
             }
         }
 
-        renderBuffers.clear();
+        drawBatches.clear();
         vertexBufferPool.reset();
         indexBufferPool.reset();
     }
 
-    private static class RenderBuffer {
+    private static class DrawBatch {
         public final RenderPipeline pipeline;
-        public final GpuTextureView textureView;
-        public final GpuSampler sampler;
 
+        // texture data
+        public GpuTextureView textureView;
+        public GpuSampler sampler;
+
+        // for rendering
         public MeshData meshData;
         public GpuBuffer vertexBuffer;
         public GpuBuffer indexBuffer;
         public VertexFormat.IndexType indexType;
 
-        public RenderBuffer(RenderPipeline pipeline, GpuTextureView textureView, GpuSampler sampler) {
+        public DrawBatch(RenderPipeline pipeline) {
             this.pipeline = pipeline;
+        }
+
+        public void setTexture(GpuTextureView textureView, GpuSampler sampler) {
             this.textureView = textureView;
             this.sampler = sampler;
         }
