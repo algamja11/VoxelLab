@@ -3,6 +3,7 @@ package com.mamiyaotaru.voxelmap.util;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.systems.CommandEncoder;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.GpuSampler;
@@ -17,8 +18,10 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.OptionalInt;
+import java.util.function.Supplier;
 
 public class VoxelMapRenderer {
     private static final Tesselator tessellator = new Tesselator(4096);
@@ -28,7 +31,8 @@ public class VoxelMapRenderer {
     private static RenderBuffer renderBuffer;
     private static BufferBuilder bufferBuilder;
 
-    private static int bufferCreationCount = 0;
+    private static final GPUBufferPool vertexBufferPool = new GPUBufferPool();
+    private static final GPUBufferPool indexBufferPool = new GPUBufferPool();
 
     private static void ensureBatching() {
         if (!batching) {
@@ -62,18 +66,16 @@ public class VoxelMapRenderer {
     public static void endBatch() {
         ensureBatching();
 
-        // TODO: 재사용 가능한 임시 버퍼 만들기
-        ++bufferCreationCount;
         try (MeshData meshData = bufferBuilder.build()) {
             if (meshData == null) {
                 return;
             }
 
-            GpuBuffer vertexBuffer = RenderSystem.getDevice().createBuffer(() -> "VoxelMap Immediate Vertex Buffer" + bufferCreationCount, GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST, meshData.vertexBuffer());
+            GpuBuffer vertexBuffer = vertexBufferPool.upload(() -> "VoxelMap Cached Vertex Buffer", GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST, meshData.vertexBuffer());
             GpuBuffer indexBuffer;
             VertexFormat.IndexType indexType;
             if (meshData.indexBuffer() != null) {
-                indexBuffer = RenderSystem.getDevice().createBuffer(() -> "VoxelMap Immediate Index Buffer" + bufferCreationCount, GpuBuffer.USAGE_INDEX | GpuBuffer.USAGE_COPY_DST, meshData.indexBuffer());
+                indexBuffer = indexBufferPool.upload(() -> "VoxelMap Cached Index Buffer", GpuBuffer.USAGE_INDEX | GpuBuffer.USAGE_COPY_DST, meshData.indexBuffer());
                 indexType = meshData.drawState().indexType();
             } else {
                 RenderSystem.AutoStorageIndexBuffer autoStorageIndexBuffer = RenderSystem.getSequentialBuffer(meshData.drawState().mode());
@@ -116,6 +118,8 @@ public class VoxelMapRenderer {
         }
 
         renderBuffers.clear();
+        vertexBufferPool.reset();
+        indexBufferPool.reset();
     }
 
     private static class RenderBuffer {
@@ -139,6 +143,46 @@ public class VoxelMapRenderer {
             this.vertexBuffer = vertexBuffer;
             this.indexBuffer = indexBuffer;
             this.indexType = indexType;
+        }
+    }
+
+    private static class GPUBufferPool {
+        private final ArrayList<GpuBuffer> buffers = new ArrayList<>();
+        private int index = 0;
+
+        public GpuBuffer upload(Supplier<String> name, int usage, ByteBuffer byteBuffer) {
+            if (buffers.size() <= index) {
+                buffers.add(RenderSystem.getDevice().createBuffer(name, usage, byteBuffer));
+
+                System.out.println("Adding new buffer: " + index);
+            }
+            GpuBuffer buffer = buffers.get(index);
+
+            CommandEncoder commandEncoder = RenderSystem.getDevice().createCommandEncoder();
+            if (buffer.size() < byteBuffer.remaining()) {
+                buffer.close();
+                buffer = RenderSystem.getDevice().createBuffer(name, usage, byteBuffer);
+                buffers.set(index, buffer);
+
+                System.out.println("Resizing buffer: " + index);
+            } else {
+                commandEncoder.writeToBuffer(buffer.slice(), byteBuffer);
+            }
+
+            index++;
+            return buffer;
+        }
+
+        public void reset() {
+            index = 0;
+        }
+
+        public void dispose() {
+            reset();
+            for (GpuBuffer buffer : buffers) {
+                buffer.close();
+            }
+            buffers.clear();
         }
     }
 }
