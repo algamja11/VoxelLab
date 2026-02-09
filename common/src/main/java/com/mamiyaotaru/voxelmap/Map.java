@@ -172,7 +172,6 @@ public class Map implements Runnable, IChangeObserver {
     // Map Rendering
     private final GpuTexture fboTexture;
     private final GpuTextureView fboTextureView;
-    private final Tesselator fboTessellator = new Tesselator(4096);
     private final VoxelMapCachedOrthoProjectionMatrixBuffer projection;
 
     public Map() {
@@ -1488,12 +1487,8 @@ public class Map implements Runnable, IChangeObserver {
             }
         }
 
-        AbstractTexture stencilTexture = null;
-        if (this.options.squareMap) {
-            stencilTexture = Minecraft.getInstance().getTextureManager().getTexture(resourceSquareMapStencil);
-        } else {
-            stencilTexture = Minecraft.getInstance().getTextureManager().getTexture(resourceRoundMapStencil);
-        }
+        Identifier stencilTexture = this.options.squareMap ? resourceSquareMapStencil : resourceRoundMapStencil;
+        Identifier frameTexture = this.options.squareMap ? resourceSquareMapFrame : resourceRoundMapFrame;
 
         float multi = (float) (1.0 / this.zoomScale);
         float percentX = (float) (GameVariableAccessShim.xCoordDouble() - this.lastImageX) * multi;
@@ -1520,20 +1515,18 @@ public class Map implements Runnable, IChangeObserver {
 
         VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST);
         VoxelMapRenderer.bindTexture(mapImages[this.zoom]);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), -256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), 256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), 256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), -256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.endBatch();
 
-        Vector3f vector3f = new Vector3f();
-        guiGraphics.pose().transform(-256, 256, 1, vector3f);
-        VoxelMapRenderer.addVertex(vector3f.x, vector3f.y, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
-
-        guiGraphics.pose().transform(256, 256, 1, vector3f);
-        VoxelMapRenderer.addVertex(vector3f.x, vector3f.y, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
-
-        guiGraphics.pose().transform(256, -256, 1, vector3f);
-        VoxelMapRenderer.addVertex(vector3f.x, vector3f.y, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
-
-        guiGraphics.pose().transform(-256, -256, 1, vector3f);
-        VoxelMapRenderer.addVertex(vector3f.x, vector3f.y, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
-
+        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_NO_DEPTH_TEST);
+        VoxelMapRenderer.bindTexture(frameTexture);
+        VoxelMapRenderer.addVertex(-256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(-256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
         VoxelMapRenderer.endBatch();
 
         RenderSystem.backupProjectionMatrix();
@@ -1541,12 +1534,10 @@ public class Map implements Runnable, IChangeObserver {
         RenderSystem.getModelViewStack().pushMatrix();
         RenderSystem.getModelViewStack().identity();
 
-        VoxelMapRenderer.flush("Map To Screen", this.fboTextureView);
+        VoxelMapRenderer.flush(() -> "VoxelMap Map to Screen", this.fboTextureView);
 
         RenderSystem.getModelViewStack().popMatrix();
         RenderSystem.restoreProjectionMatrix();
-
-//        fboTessellator.clear();
 
         guiGraphics.pose().popMatrix();
 
@@ -1559,7 +1550,6 @@ public class Map implements Runnable, IChangeObserver {
 
         double guiScale = (double) minecraft.getWindow().getWidth() / this.scWidth;
         minTablistOffset = guiScale * 63;
-        this.drawMapFrame(guiGraphics, x, y, this.options.squareMap);
 
         double lastXDouble = GameVariableAccessShim.xCoordDouble();
         double lastZDouble = GameVariableAccessShim.zCoordDouble();
@@ -1727,11 +1717,6 @@ public class Map implements Runnable, IChangeObserver {
 
             matrixStack.popMatrix();
         }
-    }
-
-    private void drawMapFrame(GuiGraphics guiGraphics, int x, int y, boolean squaremap) {
-        Identifier frameResource = squaremap ? resourceSquareMapFrame : resourceRoundMapFrame;
-        guiGraphics.blit(VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, frameResource, x - 32, y - 32, 0, 0, 64, 64, 64, 64);
     }
 
     private void drawDirections(GuiGraphics drawContext, int x, int y, float scaleProj) {

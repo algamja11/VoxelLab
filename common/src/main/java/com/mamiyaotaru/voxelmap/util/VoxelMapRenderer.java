@@ -1,5 +1,6 @@
 package com.mamiyaotaru.voxelmap.util;
 
+import com.mamiyaotaru.voxelmap.VoxelConstants;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
@@ -14,6 +15,8 @@ import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.resources.Identifier;
+import org.joml.Matrix3x2fStack;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -24,15 +27,42 @@ import java.util.OptionalInt;
 import java.util.function.Supplier;
 
 public class VoxelMapRenderer {
-    private static final Tesselator tessellator = new Tesselator(4096);
-    private static final ArrayList<DrawBatch> drawBatches = new ArrayList<>();
+    private static final Tesselator TESSELLATOR = new Tesselator(4096);
+    private static final ArrayList<DrawBatch> DRAW_BATCHES = new ArrayList<>();
+    private static final GPUBufferPool VERTEX_BUFFER_POOL = new GPUBufferPool();
+    private static final GPUBufferPool INDEX_BUFFER_POOL = new GPUBufferPool();
 
     private static boolean batching = false;
     private static DrawBatch drawBatch;
     private static BufferBuilder bufferBuilder;
 
-    private static final GPUBufferPool vertexBufferPool = new GPUBufferPool();
-    private static final GPUBufferPool indexBufferPool = new GPUBufferPool();
+    public static VertexConsumer getVertexConsumer() {
+        ensureBatching();
+        return bufferBuilder;
+    }
+
+    public static VertexConsumer addVertex(Matrix3x2fStack matrixStack, float x, float y, float z) {
+        Vector3f v3f = new Vector3f();
+        matrixStack.transform(x, y, 1, v3f);
+        return addVertex(v3f.x, v3f.y, z);
+    }
+
+    public static VertexConsumer addVertex(float x, float y, float z) {
+        return getVertexConsumer().addVertex(x, y, z);
+    }
+
+    public static void bindTexture(Identifier texture) {
+        bindTexture(VoxelConstants.getMinecraft().getTextureManager().getTexture(texture));
+    }
+
+    public static void bindTexture(AbstractTexture texture) {
+        bindTexture(texture.getTextureView(), texture.getSampler());
+    }
+
+    public static void bindTexture(GpuTextureView textureView, GpuSampler sampler) {
+        ensureBatching();
+        drawBatch.setTexture(textureView, sampler);
+    }
 
     private static void ensureBatching() {
         if (!batching) {
@@ -47,26 +77,7 @@ public class VoxelMapRenderer {
         batching = true;
 
         drawBatch = new DrawBatch(pipeline);
-        bufferBuilder = tessellator.begin(mode, pipeline.getVertexFormat());
-    }
-
-    public static BufferBuilder getBufferBuilder() {
-        ensureBatching();
-        return bufferBuilder;
-    }
-
-    public static VertexConsumer addVertex(float x, float y, float z) {
-        return getBufferBuilder().addVertex(x, y, z);
-    }
-
-    public static void bindTexture(AbstractTexture texture) {
-        bindTexture(texture.getTextureView(), texture.getSampler());
-    }
-
-    public static void bindTexture(GpuTextureView textureView, GpuSampler sampler) {
-        ensureBatching();
-        drawBatch.textureView = textureView;
-        drawBatch.sampler = sampler;
+        bufferBuilder = TESSELLATOR.begin(mode, pipeline.getVertexFormat());
     }
 
     public static void endBatch() {
@@ -77,11 +88,11 @@ public class VoxelMapRenderer {
                 return;
             }
 
-            GpuBuffer vertexBuffer = vertexBufferPool.upload(() -> "VoxelMap Cached Vertex Buffer", GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST, meshData.vertexBuffer());
+            GpuBuffer vertexBuffer = VERTEX_BUFFER_POOL.upload(() -> "VoxelMap Cached Vertex Buffer", GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST, meshData.vertexBuffer());
             GpuBuffer indexBuffer;
             VertexFormat.IndexType indexType;
             if (meshData.indexBuffer() != null) {
-                indexBuffer = indexBufferPool.upload(() -> "VoxelMap Cached Index Buffer", GpuBuffer.USAGE_INDEX | GpuBuffer.USAGE_COPY_DST, meshData.indexBuffer());
+                indexBuffer = INDEX_BUFFER_POOL.upload(() -> "VoxelMap Cached Index Buffer", GpuBuffer.USAGE_INDEX | GpuBuffer.USAGE_COPY_DST, meshData.indexBuffer());
                 indexType = meshData.drawState().indexType();
             } else {
                 RenderSystem.AutoStorageIndexBuffer autoStorageIndexBuffer = RenderSystem.getSequentialBuffer(meshData.drawState().mode());
@@ -90,18 +101,18 @@ public class VoxelMapRenderer {
             }
 
             drawBatch.setDataForRender(meshData, vertexBuffer, indexBuffer, indexType);
-            drawBatches.add(drawBatch);
+            DRAW_BATCHES.add(drawBatch);
         } finally {
             batching = false;
         }
     }
 
-    public static void flush(String passName, GpuTextureView textureView) {
+    public static void flush(Supplier<String> name, GpuTextureView textureView) {
         if (batching) {
             throw new IllegalStateException("Cannot flush while a batch is active. Call endBatch() first.");
         }
 
-        if (drawBatches.isEmpty()) {
+        if (DRAW_BATCHES.isEmpty()) {
             return;
         }
 
@@ -113,11 +124,11 @@ public class VoxelMapRenderer {
                         new Vector3f(),
                         new Matrix4f());
 
-        try (RenderPass renderPass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "VoxelMap: " + passName, textureView, OptionalInt.of(0x00000000))) {
+        try (RenderPass renderPass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(name, textureView, OptionalInt.of(0x00000000))) {
             RenderSystem.bindDefaultUniforms(renderPass);
             renderPass.setUniform("DynamicTransforms", gpuBufferSlice);
 
-            for (DrawBatch drawBatch : drawBatches) {
+            for (DrawBatch drawBatch : DRAW_BATCHES) {
                 renderPass.setVertexBuffer(0, drawBatch.vertexBuffer);
                 renderPass.setIndexBuffer(drawBatch.indexBuffer, drawBatch.indexType);
 
@@ -127,9 +138,9 @@ public class VoxelMapRenderer {
             }
         }
 
-        drawBatches.clear();
-        vertexBufferPool.reset();
-        indexBufferPool.reset();
+        DRAW_BATCHES.clear();
+        VERTEX_BUFFER_POOL.reset();
+        INDEX_BUFFER_POOL.reset();
     }
 
     private static class DrawBatch {
@@ -170,19 +181,18 @@ public class VoxelMapRenderer {
             if (buffers.size() <= index) {
                 buffers.add(RenderSystem.getDevice().createBuffer(name, usage, byteBuffer));
 
-                System.out.println("Adding new buffer: " + index);
+                VoxelConstants.getLogger().info("New buffer '{}' allocated. Total Count: {}", name.get(), buffers.size());
             }
             GpuBuffer buffer = buffers.get(index);
 
-            CommandEncoder commandEncoder = RenderSystem.getDevice().createCommandEncoder();
             if (buffer.size() < byteBuffer.remaining()) {
                 buffer.close();
                 buffer = RenderSystem.getDevice().createBuffer(name, usage, byteBuffer);
                 buffers.set(index, buffer);
 
-                System.out.println("Resizing buffer: " + index);
+                VoxelConstants.getLogger().info("Buffer '{}' resized. Index: {}, Size: {}", name.get(), index, byteBuffer.remaining());
             } else {
-                commandEncoder.writeToBuffer(buffer.slice(), byteBuffer);
+                RenderSystem.getDevice().createCommandEncoder().writeToBuffer(buffer.slice(), byteBuffer);
             }
 
             index++;
