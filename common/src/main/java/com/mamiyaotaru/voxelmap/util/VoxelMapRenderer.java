@@ -21,14 +21,14 @@ import java.util.ArrayList;
 import java.util.OptionalInt;
 
 public class VoxelMapRenderer {
+    private static final Tesselator tessellator = new Tesselator(4096);
     private static final ArrayList<RenderBuffer> renderBuffers = new ArrayList<>();
 
     private static boolean batching = false;
     private static RenderBuffer renderBuffer;
     private static BufferBuilder bufferBuilder;
 
-    // TEST
-    static int immediateCount = 0;
+    private static int bufferCreationCount = 0;
 
     private static void ensureBatching() {
         if (!batching) {
@@ -46,9 +46,8 @@ public class VoxelMapRenderer {
         }
         batching = true;
 
-        // TODO: 재사용 가능한 테셀레이터 만들기
         renderBuffer = new RenderBuffer(pipeline, textureView, sampler);
-        bufferBuilder = new Tesselator(4096).begin(mode, pipeline.getVertexFormat());
+        bufferBuilder = tessellator.begin(mode, pipeline.getVertexFormat());
     }
 
     public static VertexConsumer addVertex(float x, float y, float z) {
@@ -61,17 +60,17 @@ public class VoxelMapRenderer {
         ensureBatching();
 
         // TODO: 재사용 가능한 임시 버퍼 만들기
-        ++immediateCount;
+        ++bufferCreationCount;
         try (MeshData meshData = bufferBuilder.build()) {
             if (meshData == null) {
                 return;
             }
 
-            GpuBuffer vertexBuffer = RenderSystem.getDevice().createBuffer(() -> "VoxelMap Immediate Vertex Buffer" + immediateCount, 40, meshData.vertexBuffer());
+            GpuBuffer vertexBuffer = RenderSystem.getDevice().createBuffer(() -> "VoxelMap Immediate Vertex Buffer" + bufferCreationCount, 40, meshData.vertexBuffer());
             GpuBuffer indexBuffer;
             VertexFormat.IndexType indexType;
             if (meshData.indexBuffer() != null) {
-                indexBuffer = RenderSystem.getDevice().createBuffer(() -> "VoxelMap Immediate Index Buffer" + immediateCount, 72, meshData.indexBuffer());
+                indexBuffer = RenderSystem.getDevice().createBuffer(() -> "VoxelMap Immediate Index Buffer" + bufferCreationCount, 72, meshData.indexBuffer());
                 indexType = meshData.drawState().indexType();
             } else {
                 RenderSystem.AutoStorageIndexBuffer autoStorageIndexBuffer = RenderSystem.getSequentialBuffer(meshData.drawState().mode());
@@ -81,9 +80,9 @@ public class VoxelMapRenderer {
 
             renderBuffer.setDataForRender(meshData, vertexBuffer, indexBuffer, indexType);
             renderBuffers.add(renderBuffer);
+        } finally {
+            batching = false;
         }
-
-        batching = false;
     }
 
     public static void flush(String passName, GpuTextureView textureView) {
