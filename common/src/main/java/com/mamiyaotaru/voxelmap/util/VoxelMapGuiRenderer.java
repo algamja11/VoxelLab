@@ -163,8 +163,8 @@ public class VoxelMapGuiRenderer {
         }
 
         DRAW_BATCHES.clear();
-        VERTEX_BUFFER_POOL.reset();
-        INDEX_BUFFER_POOL.reset();
+        VERTEX_BUFFER_POOL.rewind();
+        INDEX_BUFFER_POOL.rewind();
     }
 
     private static class DrawBatch {
@@ -216,7 +216,7 @@ public class VoxelMapGuiRenderer {
                 buffer = RenderSystem.getDevice().createBuffer(name, usage, newSize);
                 buffers.set(index, buffer);
 
-                VoxelConstants.getLogger().info("Buffer '{}' resized. Index: {}, Size: {}bytes", name.get(), index, newSize);
+                VoxelConstants.getLogger().info("Buffer '{}' resized. Index: {}, Size: {} Bytes", name.get(), index, newSize);
             } else {
                 RenderSystem.getDevice().createCommandEncoder().writeToBuffer(buffer.slice(), byteBuffer);
             }
@@ -225,12 +225,12 @@ public class VoxelMapGuiRenderer {
             return buffer;
         }
 
-        public void reset() {
+        public void rewind() {
             index = 0;
         }
 
         public void dispose() {
-            reset();
+            rewind();
             for (GpuBuffer buffer : buffers) {
                 buffer.close();
             }
