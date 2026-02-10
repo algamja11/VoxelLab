@@ -619,6 +619,8 @@ public class Map implements Runnable, IChangeObserver {
         }
         Map.statusIconOffset = statusIconOffset;
 
+        this.layoutVariables.updateVars(scScale, mapX, mapY, this.zoomScale, this.zoomScaleAdjusted);
+
         if (!this.options.hide) {
             if (this.fullscreenMap) {
                 this.renderMapFull(drawContext, this.scWidth, this.scHeight, scaleProj);
@@ -1475,7 +1477,6 @@ public class Map implements Runnable, IChangeObserver {
         }
 
         Identifier stencilTexture = this.options.squareMap ? resourceSquareMapStencil : resourceRoundMapStencil;
-        Identifier frameTexture = this.options.squareMap ? resourceSquareMapFrame : resourceRoundMapFrame;
 
         float multi = (float) (1.0 / this.zoomScale);
         float percentX = (float) (GameVariableAccessShim.xCoordDouble() - this.lastImageX) * multi;
@@ -1484,7 +1485,7 @@ public class Map implements Runnable, IChangeObserver {
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().identity();
 
-        VoxelMapGuiRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST);
+        VoxelMapGuiRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_NO_DEPTH_TEST);
         VoxelMapGuiRenderer.bindTexture(stencilTexture);
         VoxelMapGuiRenderer.addVertex(-256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
         VoxelMapGuiRenderer.addVertex(256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
@@ -1501,7 +1502,7 @@ public class Map implements Runnable, IChangeObserver {
         guiGraphics.pose().scale(scale, scale);
         guiGraphics.pose().translate(-percentX * 512.0F / 64.0F, percentY * 512.0F / 64.0F);
 
-        VoxelMapGuiRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST_DST_ALPHA);
+        VoxelMapGuiRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST);
         VoxelMapGuiRenderer.bindTexture(mapImages[this.zoom]);
         VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), -256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
         VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), 256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
@@ -1511,13 +1512,9 @@ public class Map implements Runnable, IChangeObserver {
 
         guiGraphics.pose().popMatrix();
 
-        VoxelMapGuiRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST);
-        VoxelMapGuiRenderer.bindTexture(frameTexture);
-        VoxelMapGuiRenderer.addVertex(-256, 256, -2300).setUv(0, 0).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.addVertex(256, 256, -2300).setUv(1, 0).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.addVertex(256, -256, -2300).setUv(1, 1).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.addVertex(-256, -256, -2300).setUv(0, 1).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.endBatch();
+        if (VoxelConstants.getVoxelMapInstance().getRadar() != null) {
+            VoxelConstants.getVoxelMapInstance().getRadar().onTickInGame(guiGraphics, this.layoutVariables, scaleProj);
+        }
 
         RenderSystem.backupProjectionMatrix();
         RenderSystem.setProjectionMatrix(projection.getBuffer(), ProjectionType.ORTHOGRAPHIC);
@@ -1531,15 +1528,13 @@ public class Map implements Runnable, IChangeObserver {
 
         guiGraphics.pose().popMatrix();
 
-        VoxelMapGuiGraphics.blitFloat(guiGraphics, RenderPipelines.GUI_TEXTURED, renderResult, x - 32, y - 32, 64, 64, 0, 1, 0, 1, 0xffffffff);
-
-        if (VoxelConstants.getVoxelMapInstance().getRadar() != null) {
-            this.layoutVariables.updateVars(scScale, x, y, this.zoomScale, this.zoomScaleAdjusted);
-            VoxelConstants.getVoxelMapInstance().getRadar().onTickInGame(guiGraphics, this.layoutVariables, 1.0F);
-        }
+        VoxelMapGuiGraphics.blitFloat(guiGraphics, RenderPipelines.GUI_TEXTURED, renderResult, x - 32, y - 32, 64, 64, 0, 1, 0, 1, 0xFFFFFFFF);
 
         double guiScale = (double) minecraft.getWindow().getWidth() / this.scWidth;
         minTablistOffset = guiScale * 63;
+
+        Identifier minimapFrame = this.options.squareMap ? resourceSquareMapFrame : resourceRoundMapFrame;
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, minimapFrame, x - 32, y - 32, 0, 0, 64, 64, 64, 64, 0xFFFFFFFF);
 
         double lastXDouble = GameVariableAccessShim.xCoordDouble();
         double lastZDouble = GameVariableAccessShim.zCoordDouble();
@@ -1619,7 +1614,7 @@ public class Map implements Runnable, IChangeObserver {
                     guiGraphics.pose().translate(0.0f, -hypot);
                 }
 
-                icon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - 4, y - 4, 8, 8, color);
+                icon.blit(guiGraphics, RenderPipelines.GUI_TEXTURED, x - 4, y - 4, 8, 8, color);
             } catch (Exception var40) {
                 this.showMessage("Error: marker overlay not found!");
             } finally {
@@ -1643,7 +1638,7 @@ public class Map implements Runnable, IChangeObserver {
                 guiGraphics.pose().translate(0.0f, -hypot);
                 guiGraphics.pose().rotate(locate * Mth.DEG_TO_RAD);
 
-                icon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - 4, y - 4, 8, 8, color);
+                icon.blit(guiGraphics, RenderPipelines.GUI_TEXTURED, x - 4, y - 4, 8, 8, color);
             } catch (Exception var42) {
                 this.showMessage("Error: waypoint overlay not found!");
             } finally {

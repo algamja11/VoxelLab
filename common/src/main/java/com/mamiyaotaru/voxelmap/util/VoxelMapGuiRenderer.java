@@ -17,6 +17,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import org.joml.Matrix3x2fStack;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -201,19 +202,21 @@ public class VoxelMapGuiRenderer {
         private int index = 0;
 
         public GpuBuffer upload(Supplier<String> name, int usage, ByteBuffer byteBuffer) {
+            int remaining = byteBuffer.remaining();
             if (buffers.size() <= index) {
-                buffers.add(RenderSystem.getDevice().createBuffer(name, usage, byteBuffer));
+                buffers.add(RenderSystem.getDevice().createBuffer(name, usage, remaining));
 
                 VoxelConstants.getLogger().info("New buffer '{}' allocated. Total Count: {}", name.get(), buffers.size());
             }
             GpuBuffer buffer = buffers.get(index);
 
-            if (buffer.size() < byteBuffer.remaining()) {
+            if (buffer.size() < remaining) {
+                int newSize = Mth.smallestEncompassingPowerOfTwo(remaining);
                 buffer.close();
-                buffer = RenderSystem.getDevice().createBuffer(name, usage, byteBuffer);
+                buffer = RenderSystem.getDevice().createBuffer(name, usage, newSize);
                 buffers.set(index, buffer);
 
-                VoxelConstants.getLogger().info("Buffer '{}' resized. Index: {}, Size: {}", name.get(), index, byteBuffer.remaining());
+                VoxelConstants.getLogger().info("Buffer '{}' resized. Index: {}, Size: {}bytes", name.get(), index, newSize);
             } else {
                 RenderSystem.getDevice().createCommandEncoder().writeToBuffer(buffer.slice(), byteBuffer);
             }

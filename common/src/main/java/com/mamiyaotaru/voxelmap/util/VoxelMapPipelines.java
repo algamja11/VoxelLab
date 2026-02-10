@@ -3,8 +3,6 @@ package com.mamiyaotaru.voxelmap.util;
 import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.DepthTestFunction;
-import com.mojang.blaze3d.platform.DestFactor;
-import com.mojang.blaze3d.platform.SourceFactor;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat.Mode;
@@ -13,32 +11,17 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 
 public class VoxelMapPipelines {
-    public static final BlendFunction DST_ALPHA = new BlendFunction(SourceFactor.DST_ALPHA, DestFactor.ONE_MINUS_DST_ALPHA);
-
     public static final RenderPipeline GUI_TEXTURED_NO_DEPTH_TEST = RenderPipeline
             .builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_no_depth_test"))
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
             .build();
 
-    public static final RenderPipeline GUI_TEXTURED_LEQUAL_DEPTH_TEST = RenderPipeline
+    public static final RenderPipeline GUI_TEXTURED_MASKED_NO_DEPTH_TEST = RenderPipeline
             .builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
-            .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_lequal_depth_test"))
-            .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
-            .build();
-
-    public static final RenderPipeline GUI_TEXTURED_NO_DEPTH_TEST_DST_ALPHA = RenderPipeline
-            .builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
-            .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_no_depth_test_dst_alpha"))
+            .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_masked_no_depth_test"))
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
-            .withBlend(DST_ALPHA)
-            .build();
-
-    public static final RenderPipeline GUI_TEXTURED_LEQUAL_DEPTH_TEST_DST_ALPHA = RenderPipeline
-            .builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
-            .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_lequal_depth_test_dst_alpha"))
-            .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
-            .withBlend(DST_ALPHA)
+            .withColorWrite(true, false)
             .build();
 
     public static final RenderPipeline WAYPOINT_BEAM = RenderPipeline.builder(RenderPipelines.MATRICES_PROJECTION_SNIPPET)

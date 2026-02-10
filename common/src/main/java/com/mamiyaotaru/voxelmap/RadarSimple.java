@@ -10,6 +10,7 @@ import com.mamiyaotaru.voxelmap.util.VoxelMapPipelines;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.TextureContents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -208,9 +209,9 @@ public class RadarSimple implements IRadar {
                     guiGraphics.pose().rotate((contact.angle + contactFacing) * Mth.DEG_TO_RAD);
                     guiGraphics.pose().translate(-x, -y);
 
-                    this.textureAtlas.getAtlasSprite("contact").blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - 4, y - 4, 8, 8, color);
+                    this.textureAtlas.getAtlasSprite("contact").blit(guiGraphics, RenderPipelines.GUI_TEXTURED, x - 4, y - 4, 8, 8, color);
                     if (this.options.showFacing) {
-                        this.textureAtlas.getAtlasSprite("facing").blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - 4, y - 4, 8, 8, color);
+                        this.textureAtlas.getAtlasSprite("facing").blit(guiGraphics, RenderPipelines.GUI_TEXTURED, x - 4, y - 4, 8, 8, color);
                     }
                 } catch (Exception e) {
                     VoxelConstants.getLogger().error("Error rendering mob icon! " + e.getLocalizedMessage() + " contact type " + BuiltInRegistries.ENTITY_TYPE.getKey(contact.entity.getType()));
