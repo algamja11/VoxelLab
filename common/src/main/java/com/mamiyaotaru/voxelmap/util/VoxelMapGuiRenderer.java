@@ -7,7 +7,9 @@ import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.GpuSampler;
+import com.mojang.blaze3d.textures.GpuTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
+import com.mojang.blaze3d.textures.TextureFormat;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.Tesselator;
@@ -22,10 +24,11 @@ import org.joml.Vector4f;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.function.Supplier;
 
-public class VoxelMapRenderer {
+public class VoxelMapGuiRenderer {
     private static final Tesselator TESSELLATOR = new Tesselator(4096);
     private static final ArrayList<DrawBatch> DRAW_BATCHES = new ArrayList<>();
     private static final GPUBufferPool VERTEX_BUFFER_POOL = new GPUBufferPool();
@@ -35,10 +38,10 @@ public class VoxelMapRenderer {
     private static DrawBatch drawBatch;
     private static BufferBuilder bufferBuilder;
 
-    public static VertexConsumer getVertexConsumer() {
-        ensureBatching();
-        return bufferBuilder;
-    }
+    private static GpuTexture immediateColorTexture;
+    private static GpuTexture immediateDepthTexture;
+    private static GpuTextureView immediateColorTextureView;
+    private static GpuTextureView immediateDepthTextureView;
 
     public static VertexConsumer addVertex(Matrix3x2fStack matrixStack, float x, float y, float z) {
         Vector3f v3f = new Vector3f();
@@ -47,7 +50,7 @@ public class VoxelMapRenderer {
     }
 
     public static VertexConsumer addVertex(float x, float y, float z) {
-        return getVertexConsumer().addVertex(x, y, z);
+        return bufferBuilder.addVertex(x, y, z);
     }
 
     public static void bindTexture(Identifier texture) {
@@ -59,17 +62,12 @@ public class VoxelMapRenderer {
     }
 
     public static void bindTexture(GpuTextureView textureView, GpuSampler sampler) {
-        ensureBatching();
         drawBatch.setTexture(textureView, sampler);
     }
 
-    private static void ensureBatching() {
-        if (!batching) {
-            throw new IllegalStateException("No active batch! Call beginBatch() before submitting geometry.");
-        }
-    }
-
     public static void beginBatch(VertexFormat.Mode mode, RenderPipeline pipeline) {
+        RenderSystem.assertOnRenderThread();
+
         if (batching) {
             throw new IllegalStateException("Batch already active! Call endBatch() before beginBatch().");
         }
@@ -80,7 +78,11 @@ public class VoxelMapRenderer {
     }
 
     public static void endBatch() {
-        ensureBatching();
+        RenderSystem.assertOnRenderThread();
+
+        if (!batching) {
+            throw new IllegalStateException("No active batch! Call beginBatch() before submitting geometry.");
+        }
 
         try (MeshData meshData = bufferBuilder.build()) {
             if (meshData == null) {
@@ -106,7 +108,29 @@ public class VoxelMapRenderer {
         }
     }
 
-    public static void flush(Supplier<String> name, GpuTextureView textureView) {
+    public static GpuTextureView flushImmediate(Supplier<String> name, int width, int height) {
+        RenderSystem.assertOnRenderThread();
+
+        if (immediateColorTexture == null || immediateColorTexture.getWidth(0) != width || immediateColorTexture.getHeight(0) != height) {
+            if (immediateColorTexture != null) {
+                immediateColorTexture.close();
+                immediateDepthTexture.close();
+            }
+
+            immediateColorTexture = RenderSystem.getDevice().createTexture("voxelmap-immediate-color-fbo", GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_RENDER_ATTACHMENT, TextureFormat.RGBA8, width, height, 1, 1);
+            immediateDepthTexture = RenderSystem.getDevice().createTexture("voxelmap-immediate-depth-fbo", GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_RENDER_ATTACHMENT, TextureFormat.DEPTH32, width, height, 1, 1);
+            immediateColorTextureView = RenderSystem.getDevice().createTextureView(immediateColorTexture);
+            immediateDepthTextureView = RenderSystem.getDevice().createTextureView(immediateDepthTexture);
+        }
+
+        flush(name, immediateColorTextureView, immediateDepthTextureView);
+
+        return immediateColorTextureView;
+    }
+
+    public static void flush(Supplier<String> name, GpuTextureView colorTexture, GpuTextureView depthTexture) {
+        RenderSystem.assertOnRenderThread();
+
         if (batching) {
             throw new IllegalStateException("Cannot flush while a batch is active. Call endBatch() first.");
         }
@@ -123,7 +147,7 @@ public class VoxelMapRenderer {
                         new Vector3f(),
                         new Matrix4f());
 
-        try (RenderPass renderPass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(name, textureView, OptionalInt.of(0x00000000))) {
+        try (RenderPass renderPass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(name, colorTexture, OptionalInt.of(0x00000000), depthTexture, OptionalDouble.of(1.0))) {
             RenderSystem.bindDefaultUniforms(renderPass);
             renderPass.setUniform("DynamicTransforms", gpuBufferSlice);
 

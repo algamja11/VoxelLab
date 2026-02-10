@@ -13,18 +13,12 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 
 public class VoxelMapPipelines {
+    public static final BlendFunction DST_ALPHA = new BlendFunction(SourceFactor.DST_ALPHA, DestFactor.ONE_MINUS_DST_ALPHA);
 
     public static final RenderPipeline GUI_TEXTURED_NO_DEPTH_TEST = RenderPipeline
             .builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_no_depth_test"))
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
-            .build();
-
-    public static final RenderPipeline GUI_TEXTURED_MASKED_NO_DEPTH_TEST = RenderPipeline
-            .builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
-            .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_no_depth_test_masked"))
-            .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
-            .withColorWrite(true, false)
             .build();
 
     public static final RenderPipeline GUI_TEXTURED_LEQUAL_DEPTH_TEST = RenderPipeline
@@ -33,11 +27,18 @@ public class VoxelMapPipelines {
             .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
             .build();
 
-    public static final RenderPipeline GUI_TEXTURED_MASKED_LEQUAL_DEPTH_TEST = RenderPipeline
+    public static final RenderPipeline GUI_TEXTURED_NO_DEPTH_TEST_DST_ALPHA = RenderPipeline
             .builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
-            .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_lequal_depth_test"))
+            .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_no_depth_test_dst_alpha"))
+            .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+            .withBlend(DST_ALPHA)
+            .build();
+
+    public static final RenderPipeline GUI_TEXTURED_LEQUAL_DEPTH_TEST_DST_ALPHA = RenderPipeline
+            .builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/gui_textured_lequal_depth_test_dst_alpha"))
             .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
-            .withColorWrite(true, false)
+            .withBlend(DST_ALPHA)
             .build();
 
     public static final RenderPipeline WAYPOINT_BEAM = RenderPipeline.builder(RenderPipelines.MATRICES_PROJECTION_SNIPPET)
@@ -46,30 +47,30 @@ public class VoxelMapPipelines {
             .withFragmentShader("core/position_color")
             .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, Mode.TRIANGLE_STRIP)
             .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
-            .withBlend(BlendFunction.LIGHTNING)
             .withDepthWrite(false)
+            .withBlend(BlendFunction.LIGHTNING)
             .build();
 
     public static final RenderPipeline WAYPOINT_ICON_DEPTH_TEST = RenderPipeline.builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/waypoint_icon_depth_test"))
             .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
-            .withBlend(new BlendFunction(SourceFactor.SRC_ALPHA, DestFactor.ONE_MINUS_SRC_ALPHA, SourceFactor.ONE, DestFactor.ONE_MINUS_SRC_ALPHA))
             .withDepthWrite(true)
+            .withBlend(BlendFunction.TRANSLUCENT)
             .build();
 
     public static final RenderPipeline WAYPOINT_ICON_NO_DEPTH_TEST = RenderPipeline.builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/waypoint_icon_no_depth_test"))
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
-            .withBlend(new BlendFunction(SourceFactor.SRC_ALPHA, DestFactor.ONE_MINUS_SRC_ALPHA, SourceFactor.ONE, DestFactor.ONE_MINUS_SRC_ALPHA))
             .withDepthWrite(true)
+            .withBlend(BlendFunction.TRANSLUCENT)
             .build();
 
     public static final RenderPipeline WAYPOINT_TEXT_BACKGROUND = RenderPipeline.builder(RenderPipelines.GUI_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/waypoint_background"))
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
             .withDepthBias(1.0F, 7.0F)
-            .withBlend(new BlendFunction(SourceFactor.SRC_ALPHA, DestFactor.ONE_MINUS_SRC_ALPHA, SourceFactor.ONE, DestFactor.ONE_MINUS_SRC_ALPHA))
             .withDepthWrite(false)
+            .withBlend(BlendFunction.TRANSLUCENT)
             .build();
 
     public static final VertexFormat VF = VertexFormat.builder()

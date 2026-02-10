@@ -25,15 +25,13 @@ import com.mamiyaotaru.voxelmap.util.MutableBlockPosCache;
 import com.mamiyaotaru.voxelmap.util.ScaledDynamicMutableTexture;
 import com.mamiyaotaru.voxelmap.util.VoxelMapCachedOrthoProjectionMatrixBuffer;
 import com.mamiyaotaru.voxelmap.util.VoxelMapGuiGraphics;
+import com.mamiyaotaru.voxelmap.util.VoxelMapGuiRenderer;
 import com.mamiyaotaru.voxelmap.util.VoxelMapPipelines;
-import com.mamiyaotaru.voxelmap.util.VoxelMapRenderer;
 import com.mamiyaotaru.voxelmap.util.Waypoint;
 import com.mojang.blaze3d.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
-import com.mojang.blaze3d.textures.GpuTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
-import com.mojang.blaze3d.textures.TextureFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -167,8 +165,6 @@ public class Map implements Runnable, IChangeObserver {
     private int lastBiome;
 
     // Map Rendering
-    private final GpuTexture fboTexture;
-    private final GpuTextureView fboTextureView;
     private final VoxelMapCachedOrthoProjectionMatrixBuffer projection;
 
     public Map() {
@@ -214,12 +210,6 @@ public class Map implements Runnable, IChangeObserver {
         this.zoom = this.options.zoom;
         this.setZoomScale();
 
-        final int fboTextureSize = 512;
-        this.fboTexture = RenderSystem.getDevice().createTexture("voxelmap-fbotexture", GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_RENDER_ATTACHMENT, TextureFormat.RGBA8, fboTextureSize, fboTextureSize, 1, 1);
-        this.fboTextureView = RenderSystem.getDevice().createTextureView(this.fboTexture);
-        // DynamicTexture fboTexture = new DynamicTexture("voxelmap-fbotexture", fboTextureSize, fboTextureSize, true);
-        // minecraft.getTextureManager().register(resourceFboTexture, fboTexture);
-        // this.fboTexture = fboTexture.getTexture();
         this.projection = new VoxelMapCachedOrthoProjectionMatrixBuffer("VoxelMap Map To Screen Proj", -256.0F, 256.0F, 256.0F, -256.0F, 1000.0F, 21000.0F);
 
         this.loadMapTextures();
@@ -1494,13 +1484,13 @@ public class Map implements Runnable, IChangeObserver {
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().identity();
 
-        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_NO_DEPTH_TEST);
-        VoxelMapRenderer.bindTexture(stencilTexture);
-        VoxelMapRenderer.addVertex(-256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.addVertex(256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.addVertex(256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.addVertex(-256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.endBatch();
+        VoxelMapGuiRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST);
+        VoxelMapGuiRenderer.bindTexture(stencilTexture);
+        VoxelMapGuiRenderer.addVertex(-256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.addVertex(256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.addVertex(256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.addVertex(-256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.endBatch();
 
         guiGraphics.pose().pushMatrix();
         if (!this.options.rotates) {
@@ -1511,42 +1501,42 @@ public class Map implements Runnable, IChangeObserver {
         guiGraphics.pose().scale(scale, scale);
         guiGraphics.pose().translate(-percentX * 512.0F / 64.0F, percentY * 512.0F / 64.0F);
 
-        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST);
-        VoxelMapRenderer.bindTexture(mapImages[this.zoom]);
-        VoxelMapRenderer.addVertex(guiGraphics.pose(), -256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.addVertex(guiGraphics.pose(), 256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.addVertex(guiGraphics.pose(), 256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.addVertex(guiGraphics.pose(), -256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.endBatch();
+        VoxelMapGuiRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST_DST_ALPHA);
+        VoxelMapGuiRenderer.bindTexture(mapImages[this.zoom]);
+        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), -256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), 256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), 256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), -256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.endBatch();
 
         guiGraphics.pose().popMatrix();
 
-        if (VoxelConstants.getVoxelMapInstance().getRadar() != null) {
-            this.layoutVariables.updateVars(scScale, x, y, this.zoomScale, this.zoomScaleAdjusted);
-            VoxelConstants.getVoxelMapInstance().getRadar().onTickInGame(guiGraphics, this.layoutVariables, scaleProj);
-        }
-
-        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_NO_DEPTH_TEST);
-        VoxelMapRenderer.bindTexture(frameTexture);
-        VoxelMapRenderer.addVertex(-256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.addVertex(256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.addVertex(256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.addVertex(-256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
-        VoxelMapRenderer.endBatch();
+        VoxelMapGuiRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST);
+        VoxelMapGuiRenderer.bindTexture(frameTexture);
+        VoxelMapGuiRenderer.addVertex(-256, 256, -2300).setUv(0, 0).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.addVertex(256, 256, -2300).setUv(1, 0).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.addVertex(256, -256, -2300).setUv(1, 1).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.addVertex(-256, -256, -2300).setUv(0, 1).setColor(255, 255, 255, 255);
+        VoxelMapGuiRenderer.endBatch();
 
         RenderSystem.backupProjectionMatrix();
         RenderSystem.setProjectionMatrix(projection.getBuffer(), ProjectionType.ORTHOGRAPHIC);
         RenderSystem.getModelViewStack().pushMatrix();
         RenderSystem.getModelViewStack().identity();
 
-        VoxelMapRenderer.flush(() -> "VoxelMap Map to Screen", this.fboTextureView);
+        GpuTextureView renderResult = VoxelMapGuiRenderer.flushImmediate(() -> "VoxelMap Map to Screen", 512, 512);
 
         RenderSystem.getModelViewStack().popMatrix();
         RenderSystem.restoreProjectionMatrix();
 
         guiGraphics.pose().popMatrix();
 
-        VoxelMapGuiGraphics.blitFloat(guiGraphics, RenderPipelines.GUI_TEXTURED, fboTextureView, x - 32, y - 32, 64, 64, 0, 1, 0, 1, 0xffffffff);
+        VoxelMapGuiGraphics.blitFloat(guiGraphics, RenderPipelines.GUI_TEXTURED, renderResult, x - 32, y - 32, 64, 64, 0, 1, 0, 1, 0xffffffff);
+
+        if (VoxelConstants.getVoxelMapInstance().getRadar() != null) {
+            this.layoutVariables.updateVars(scScale, x, y, this.zoomScale, this.zoomScaleAdjusted);
+            VoxelConstants.getVoxelMapInstance().getRadar().onTickInGame(guiGraphics, this.layoutVariables, 1.0F);
+        }
 
         double guiScale = (double) minecraft.getWindow().getWidth() / this.scWidth;
         minTablistOffset = guiScale * 63;
