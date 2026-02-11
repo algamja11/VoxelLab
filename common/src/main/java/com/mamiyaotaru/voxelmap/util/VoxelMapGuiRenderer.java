@@ -216,7 +216,7 @@ public class VoxelMapGuiRenderer {
                 int initialBufferSize = Mth.smallestEncompassingPowerOfTwo(remaining);
                 buffers.add(RenderSystem.getDevice().createBuffer(name, usage, initialBufferSize));
 
-                VoxelConstants.getLogger().info("New buffer allocated in '{}'. Total Count: {}, Size: {} Bytes", name.get(), buffers.size(), initialBufferSize);
+                VoxelConstants.getLogger().info("New buffer allocated in '{}' (Total: {}). Size: {} Bytes", name.get(), buffers.size(), initialBufferSize);
             }
             GpuBuffer buffer = buffers.get(index);
 
@@ -226,7 +226,7 @@ public class VoxelMapGuiRenderer {
                 buffer = RenderSystem.getDevice().createBuffer(name, usage, newBufferSize);
                 buffers.set(index, buffer);
 
-                VoxelConstants.getLogger().info("Buffer in '{}' resized. Index: {}, Size: {} Bytes", name.get(), index, newBufferSize);
+                VoxelConstants.getLogger().info("Buffer #{} in '{}' resized. New Size: {} Bytes", index + 1, name.get(), newBufferSize);
             } else {
                 RenderSystem.getDevice().createCommandEncoder().writeToBuffer(buffer.slice(), byteBuffer);
             }
