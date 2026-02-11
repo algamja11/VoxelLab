@@ -102,7 +102,7 @@ public class VoxelMapGuiRenderer {
                 indexType = autoStorageIndexBuffer.type();
             }
 
-            drawBatch.setDataForRender(meshData, vertexBuffer, indexBuffer, indexType);
+            drawBatch.setRenderData(meshData, vertexBuffer, indexBuffer, indexType);
             DRAW_BATCHES.add(drawBatch);
         } finally {
             batching = false;
@@ -153,12 +153,16 @@ public class VoxelMapGuiRenderer {
             renderPass.setUniform("DynamicTransforms", gpuBufferSlice);
 
             for (DrawBatch drawBatch : DRAW_BATCHES) {
-                renderPass.setVertexBuffer(0, drawBatch.vertexBuffer);
-                renderPass.setIndexBuffer(drawBatch.indexBuffer, drawBatch.indexType);
+                if (!drawBatch.isReady()) {
+                    continue;
+                }
 
-                renderPass.setPipeline(drawBatch.pipeline);
-                renderPass.bindTexture("Sampler0", drawBatch.textureView, drawBatch.sampler);
-                renderPass.drawIndexed(0, 0, drawBatch.meshData.drawState().indexCount(), 1);
+                renderPass.setVertexBuffer(0, drawBatch.getVertexBuffer());
+                renderPass.setIndexBuffer(drawBatch.getIndexBuffer(), drawBatch.getIndexType());
+
+                renderPass.setPipeline(drawBatch.getPipeline());
+                renderPass.bindTexture("Sampler0", drawBatch.getTextureView(), drawBatch.getSampler());
+                renderPass.drawIndexed(0, 0, drawBatch.getMeshData().drawState().indexCount(), 1);
             }
         }
 
@@ -168,17 +172,13 @@ public class VoxelMapGuiRenderer {
     }
 
     private static class DrawBatch {
-        public final RenderPipeline pipeline;
-
-        // texture data
-        public GpuTextureView textureView;
-        public GpuSampler sampler;
-
-        // for rendering
-        public MeshData meshData;
-        public GpuBuffer vertexBuffer;
-        public GpuBuffer indexBuffer;
-        public VertexFormat.IndexType indexType;
+        private final RenderPipeline pipeline;
+        private GpuTextureView textureView;
+        private GpuSampler sampler;
+        private MeshData meshData;
+        private GpuBuffer vertexBuffer;
+        private GpuBuffer indexBuffer;
+        private VertexFormat.IndexType indexType;
 
         public DrawBatch(RenderPipeline pipeline) {
             this.pipeline = pipeline;
@@ -189,11 +189,43 @@ public class VoxelMapGuiRenderer {
             this.sampler = sampler;
         }
 
-        public void setDataForRender(MeshData meshData, GpuBuffer vertexBuffer, GpuBuffer indexBuffer, VertexFormat.IndexType indexType) {
+        public void setRenderData(MeshData meshData, GpuBuffer vertexBuffer, GpuBuffer indexBuffer, VertexFormat.IndexType indexType) {
             this.meshData = meshData;
             this.vertexBuffer = vertexBuffer;
             this.indexBuffer = indexBuffer;
             this.indexType = indexType;
+        }
+
+        public boolean isReady() {
+            return pipeline != null && meshData != null && vertexBuffer != null && indexBuffer != null && indexType != null;
+        }
+
+        public RenderPipeline getPipeline() {
+            return pipeline;
+        }
+
+        public GpuTextureView getTextureView() {
+            return textureView;
+        }
+
+        public GpuSampler getSampler() {
+            return sampler;
+        }
+
+        public MeshData getMeshData() {
+            return meshData;
+        }
+
+        public GpuBuffer getVertexBuffer() {
+            return vertexBuffer;
+        }
+
+        public GpuBuffer getIndexBuffer() {
+            return indexBuffer;
+        }
+
+        public VertexFormat.IndexType getIndexType() {
+            return indexType;
         }
     }
 
