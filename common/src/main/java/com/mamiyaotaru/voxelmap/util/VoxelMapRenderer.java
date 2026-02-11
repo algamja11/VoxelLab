@@ -15,6 +15,7 @@ import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.gui.render.TextureSetup;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
@@ -63,7 +64,11 @@ public class VoxelMapRenderer {
     }
 
     public static void bindTexture(GpuTextureView textureView, GpuSampler sampler) {
-        drawBatch.setTexture(textureView, sampler);
+        bindTexture(TextureSetup.singleTexture(textureView, sampler));
+    }
+
+    public static void bindTexture(TextureSetup textureSetup) {
+        drawBatch.setTexture(textureSetup);
     }
 
     public static void beginBatch(VertexFormat.Mode mode, RenderPipeline pipeline) {
@@ -161,7 +166,12 @@ public class VoxelMapRenderer {
                 renderPass.setIndexBuffer(drawBatch.getIndexBuffer(), drawBatch.getIndexType());
 
                 renderPass.setPipeline(drawBatch.getPipeline());
-                renderPass.bindTexture("Sampler0", drawBatch.getTextureView(), drawBatch.getSampler());
+                TextureSetup textureSetup = drawBatch.getTextureSetup();
+                if (textureSetup != null) {
+                    renderPass.bindTexture("Sampler0", textureSetup.texure0(), textureSetup.sampler0());
+                    renderPass.bindTexture("Sampler1", textureSetup.texure1(), textureSetup.sampler1());
+                    renderPass.bindTexture("Sampler2", textureSetup.texure2(), textureSetup.sampler2());
+                }
                 renderPass.drawIndexed(0, 0, drawBatch.getMeshData().drawState().indexCount(), 1);
             }
         }
@@ -173,8 +183,7 @@ public class VoxelMapRenderer {
 
     private static class DrawBatch {
         private final RenderPipeline pipeline;
-        private GpuTextureView textureView;
-        private GpuSampler sampler;
+        private TextureSetup textureSetup;
         private MeshData meshData;
         private GpuBuffer vertexBuffer;
         private GpuBuffer indexBuffer;
@@ -184,9 +193,8 @@ public class VoxelMapRenderer {
             this.pipeline = pipeline;
         }
 
-        public void setTexture(GpuTextureView textureView, GpuSampler sampler) {
-            this.textureView = textureView;
-            this.sampler = sampler;
+        public void setTexture(TextureSetup textureSetup) {
+            this.textureSetup = textureSetup;
         }
 
         public void setRenderData(MeshData meshData, GpuBuffer vertexBuffer, GpuBuffer indexBuffer, VertexFormat.IndexType indexType) {
@@ -204,12 +212,8 @@ public class VoxelMapRenderer {
             return pipeline;
         }
 
-        public GpuTextureView getTextureView() {
-            return textureView;
-        }
-
-        public GpuSampler getSampler() {
-            return sampler;
+        public TextureSetup getTextureSetup() {
+            return textureSetup;
         }
 
         public MeshData getMeshData() {
