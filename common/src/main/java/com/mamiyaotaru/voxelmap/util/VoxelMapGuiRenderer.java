@@ -32,8 +32,8 @@ import java.util.function.Supplier;
 public class VoxelMapGuiRenderer {
     private static final Tesselator TESSELLATOR = new Tesselator(4096);
     private static final ArrayList<DrawBatch> DRAW_BATCHES = new ArrayList<>();
-    private static final GPUBufferPool VERTEX_BUFFER_POOL = new GPUBufferPool();
-    private static final GPUBufferPool INDEX_BUFFER_POOL = new GPUBufferPool();
+    private static final GPUBufferPool VERTEX_BUFFER_POOL = new GPUBufferPool(() ->  "VoxelMap Cached Vertex Buffer", GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST);
+    private static final GPUBufferPool INDEX_BUFFER_POOL = new GPUBufferPool(() ->  "VoxelMap Cached Inex Buffer", GpuBuffer.USAGE_INDEX | GpuBuffer.USAGE_COPY_DST);
 
     private static boolean batching = false;
     private static DrawBatch drawBatch;
@@ -90,11 +90,11 @@ public class VoxelMapGuiRenderer {
                 return;
             }
 
-            GpuBuffer vertexBuffer = VERTEX_BUFFER_POOL.upload(() -> "VoxelMap Cached Vertex Buffer", GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST, meshData.vertexBuffer());
+            GpuBuffer vertexBuffer = VERTEX_BUFFER_POOL.upload(meshData.vertexBuffer());
             GpuBuffer indexBuffer;
             VertexFormat.IndexType indexType;
             if (meshData.indexBuffer() != null) {
-                indexBuffer = INDEX_BUFFER_POOL.upload(() -> "VoxelMap Cached Index Buffer", GpuBuffer.USAGE_INDEX | GpuBuffer.USAGE_COPY_DST, meshData.indexBuffer());
+                indexBuffer = INDEX_BUFFER_POOL.upload(meshData.indexBuffer());
                 indexType = meshData.drawState().indexType();
             } else {
                 RenderSystem.AutoStorageIndexBuffer autoStorageIndexBuffer = RenderSystem.getSequentialBuffer(meshData.drawState().mode());
@@ -198,25 +198,35 @@ public class VoxelMapGuiRenderer {
     }
 
     private static class GPUBufferPool {
+        private final Supplier<String> name;
+        private final int usage;
         private final ArrayList<GpuBuffer> buffers = new ArrayList<>();
+
         private int index = 0;
 
-        public GpuBuffer upload(Supplier<String> name, int usage, ByteBuffer byteBuffer) {
-            int remaining = byteBuffer.remaining();
-            if (buffers.size() <= index) {
-                buffers.add(RenderSystem.getDevice().createBuffer(name, usage, remaining));
+        public GPUBufferPool(Supplier<String> name, int usage) {
+            this.name = name;
+            this.usage = usage;
+        }
 
-                VoxelConstants.getLogger().info("New buffer '{}' allocated. Total Count: {}", name.get(), buffers.size());
+        public GpuBuffer upload(ByteBuffer byteBuffer) {
+            int remaining = byteBuffer.remaining();
+
+            if (buffers.size() <= index) {
+                int initialBufferSize = Mth.smallestEncompassingPowerOfTwo(remaining);
+                buffers.add(RenderSystem.getDevice().createBuffer(name, usage, initialBufferSize));
+
+                VoxelConstants.getLogger().info("New buffer allocated in '{}'. Total Count: {}, Size: {} Bytes", name.get(), buffers.size(), initialBufferSize);
             }
             GpuBuffer buffer = buffers.get(index);
 
             if (buffer.size() < remaining) {
-                int newSize = Mth.smallestEncompassingPowerOfTwo(remaining);
+                int newBufferSize = Mth.smallestEncompassingPowerOfTwo(remaining);
                 buffer.close();
-                buffer = RenderSystem.getDevice().createBuffer(name, usage, newSize);
+                buffer = RenderSystem.getDevice().createBuffer(name, usage, newBufferSize);
                 buffers.set(index, buffer);
 
-                VoxelConstants.getLogger().info("Buffer '{}' resized. Index: {}, Size: {} Bytes", name.get(), index, newSize);
+                VoxelConstants.getLogger().info("Buffer in '{}' resized. Index: {}, Size: {} Bytes", name.get(), index, newBufferSize);
             } else {
                 RenderSystem.getDevice().createCommandEncoder().writeToBuffer(buffer.slice(), byteBuffer);
             }
