@@ -78,6 +78,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.animal.fish.Pufferfish;
 import net.minecraft.world.entity.animal.sheep.Sheep;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.item.BlockItem;
@@ -330,12 +331,10 @@ public class EntityMapImageManager {
 
     private int getMobIdentifier(Entity entity) {
         int id = 0;
-        if (entity instanceof Sheep sheep) {
-            if (sheep.isSheared()) {
-                id |= (1 << 8);
-            } else {
-                id |= sheep.getColor().getId();
-            }
+        switch (entity) {
+            case Pufferfish pufferfish -> id |= pufferfish.getPuffState();
+            case Sheep sheep -> id |= (sheep.isSheared() ? (1 << 8) : sheep.getColor().getId());
+            default -> {}
         }
 
         if (entity instanceof LivingEntity livingEntity && livingEntity.isBaby()) {
