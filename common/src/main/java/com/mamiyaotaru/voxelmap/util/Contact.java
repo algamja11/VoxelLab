@@ -9,19 +9,23 @@ import net.minecraft.world.entity.player.Player;
 import java.util.UUID;
 
 public class Contact {
+    public boolean enabled;
+
+    public final LivingEntity entity;
+    public final VoxelMapMobCategory category;
+    public UUID uuid;
+    public Component name;
+
     public double x;
     public double z;
     public double y;
     public int yFudge;
-    public float angle;
     public double distance;
-    public float brightness;
-    public VoxelMapMobCategory category;
-    public UUID uuid;
-    public Component name;
+    public float angle;
     public int rotationFactor;
-    public final LivingEntity entity;
+
     public Sprite icon;
+    public int color;
     public Sprite armorIcon;
     public int armorColor = -1;
 
@@ -29,8 +33,7 @@ public class Contact {
         this.entity = entity;
         this.category = category;
         this.uuid = entity.getUUID();
-//        this.name = entity.hasCustomName() || entity instanceof Player ? entity.getName() : null;
-        this.name = entity.getName();
+        this.name = entity.hasCustomName() || entity instanceof Player ? entity.getName() : null;
         updateLocation();
     }
 

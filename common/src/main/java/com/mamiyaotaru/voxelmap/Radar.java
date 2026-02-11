@@ -13,9 +13,11 @@ import com.mamiyaotaru.voxelmap.util.VoxelMapPipelines;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.ARGB;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -32,6 +34,10 @@ public class Radar implements IRadar {
     private final Minecraft minecraft = Minecraft.getInstance();
 
     private LayoutVariables layoutVariables;
+    private double lastX;
+    private double lastY;
+    private double lastZ;
+
     private int timer = 500;
     private float direction;
     private boolean lastOutlines = true;
@@ -79,8 +85,12 @@ public class Radar implements IRadar {
                 this.timer = 0;
             }
 
+            this.lastX = GameVariableAccessShim.xCoordDouble();
+            this.lastY = GameVariableAccessShim.yCoordDouble();
+            this.lastZ = GameVariableAccessShim.zCoordDouble();
+
             ++this.timer;
-            this.renderMapMobs(drawContext, this.layoutVariables.mapX, this.layoutVariables.mapY, scaleProj);
+            this.updateMobs();
         }
     }
 
@@ -105,6 +115,18 @@ public class Radar implements IRadar {
         }
 
         return 32.0F;
+    }
+
+    private float getIconVerticalOffset(Entity entity) {
+        if (entity.getVehicle() != null && isEntityShown(entity.getVehicle())) {
+            return -4.0F;
+        }
+
+        return 0.0F;
+    }
+
+    private boolean canRenderAboveFrame(Entity entity) {
+        return entity.getType() == EntityType.PLAYER;
     }
 
     private boolean isInRange(Entity entity, double dx, double dy, double dz, double cullDist) {
@@ -142,7 +164,7 @@ public class Radar implements IRadar {
                     int wayZ = GameVariableAccessShim.zCoord() - (int) entity.position().z();
                     int wayY = GameVariableAccessShim.yCoord() - (int) entity.position().y();
 
-                    if (this.isInRange(entity, wayX, wayY, wayZ, 5.0)) {
+                    if (this.canRenderAboveFrame(entity) || this.isInRange(entity, wayX, wayY, wayZ, 5.0)) {
                         Contact contact = new Contact((LivingEntity) entity, VoxelMapMobCategory.forEntity(entity));
                         if (contact.entity.getVehicle() != null && this.isEntityShown(contact.entity.getVehicle())) {
                             contact.yFudge = 1;
@@ -187,91 +209,65 @@ public class Radar implements IRadar {
         });
     }
 
-    public void renderMapMobs(GuiGraphics guiGraphics, int x, int y, float scaleProj) {
-        guiGraphics.pose().pushMatrix();
-        guiGraphics.pose().scale(scaleProj, scaleProj);
-
-        double zoomScale = this.layoutVariables.zoomScaleAdjusted;
-        double lastX = GameVariableAccessShim.xCoordDouble();
-        double lastZ = GameVariableAccessShim.zCoordDouble();
-        double lastY = GameVariableAccessShim.yCoordDouble();
-
-        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST);
-        VoxelMapRenderer.bindTexture(EntityMapImageManager.resourceTextureAtlasMarker);
-
+    private void updateMobs() {
         for (Contact contact : this.contacts) {
             if (contact.icon == null) {
+                contact.enabled = false;
                 continue;
             }
 
             contact.updateLocation();
-            double contactX = contact.x;
-            double contactZ = contact.z;
-            double contactY = contact.y;
-            double wayX = lastX - contactX;
-            double wayZ = lastZ - contactZ;
-            double wayY = lastY - contactY;
 
-            double maxHeight = this.getEntityMaxHeight(contact.entity) * zoomScale;
-            double adjustedDiff = maxHeight - Math.max(Math.abs(wayY), 0);
-            contact.brightness = (float) Math.max(adjustedDiff / maxHeight, 0.0);
-            contact.brightness *= contact.brightness;
-            contact.angle = (float) Math.toDegrees(Math.atan2(wayX, wayZ));
-            contact.distance = Math.sqrt(wayX * wayX + wayZ * wayZ);
+            double wayX = lastX - contact.x;
+            double wayY = lastY - contact.y;
+            double wayZ = lastZ - contact.z;
 
-            int color;
-            if (wayY < 0) {
-                color = ARGB.colorFromFloat(contact.brightness, 1.0F, 1.0F, 1.0F);
-            } else {
-                if (contact.brightness < 0.3f) {
-                    contact.brightness = 0.3f;
-                }
-                color = ARGB.colorFromFloat(1.0f, contact.brightness, contact.brightness, contact.brightness);
+            if (!isInRange(contact.entity, wayX, wayY, wayZ, 0.0)) {
+                contact.enabled = false;
+                continue;
             }
 
+            contact.enabled = true;
+
+            double maxHeight = getEntityMaxHeight(contact.entity) * layoutVariables.zoomScaleAdjusted;
+            double heightDiff = maxHeight - Math.max(0.0, Math.abs(wayY));
+            float brightness = (float) Math.max(0.0, heightDiff / maxHeight);
+            brightness *= brightness;
+
+            contact.distance = Math.sqrt(wayX * wayX + wayZ * wayZ);
+            contact.angle = (float) (Math.toDegrees(Math.atan2(wayX, wayZ)));
             if (this.minimapOptions.rotates) {
                 contact.angle += this.direction;
             } else if (this.minimapOptions.oldNorth) {
                 contact.angle -= 90.0F;
             }
+            if (wayY < 0) {
+                contact.color = ARGB.colorFromFloat(brightness, 1.0F, 1.0f, 1.0F);
+            } else {
+                float brightness2 = Math.max(0.3F, brightness);
+                contact.color = ARGB.colorFromFloat(1.0F, brightness2, brightness2, brightness2);
+            }
+        }
+    }
 
-            double scaledDistance = contact.distance / zoomScale;
-            if (this.isInRange(contact.entity, wayX, wayY, wayZ, 0.0)) {
+    @Override
+    public void renderBelowFrame(GuiGraphics guiGraphics, int x, int y, float scaleProj) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().scale(scaleProj, scaleProj);
+
+        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST);
+        VoxelMapRenderer.bindTexture(EntityMapImageManager.resourceTextureAtlasMarker);
+
+        for (Contact contact : this.contacts) {
+            if (contact.enabled) {
                 try {
                     guiGraphics.pose().pushMatrix();
-                    float iconX = (float) (Math.sin(Math.toRadians(contact.angle + contact.rotationFactor)) * scaledDistance);
-                    float iconY = (float) (Math.cos(Math.toRadians(contact.angle + contact.rotationFactor)) * scaledDistance);
+                    double scaledDistance = contact.distance / layoutVariables.zoomScaleAdjusted;
+                    float iconX = (float) (Math.sin(Math.toRadians(contact.angle)) * scaledDistance);
+                    float iconY = (float) (Math.cos(Math.toRadians(contact.angle)) * scaledDistance);
+                    iconY += getIconVerticalOffset(contact.entity);
 
-                    float yOffset = 0.0F;
-                    if (contact.entity.getVehicle() != null && this.isEntityShown(contact.entity.getVehicle())) {
-                        yOffset = -4.0F;
-                    }
-
-                    float imageWidth = contact.icon.getIconWidth() / 8.0F;
-                    float imageHeight = contact.icon.getIconHeight() / 8.0F;
-//                    contact.icon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - iconX - (imageWidth / 2), y - iconY + yOffset - (imageHeight / 2), imageWidth, imageHeight, color);
-                    drawSpriteQuad(guiGraphics, contact.icon, -iconX - (imageWidth / 2), iconY + yOffset - (imageHeight / 2), -2500, imageWidth, imageHeight, color, scaleProj);
-
-                    if (contact.armorIcon != null) {
-                        float helmetWidth = contact.armorIcon.getIconWidth() / 8.0F;
-                        float helmetHeight = contact.armorIcon.getIconHeight() / 8.0F;
-                        float helmetOffset = Float.parseFloat(this.entityMapImageManager.getMobProperties(contact.entity).getProperty("helmetOffset", "0.0"));
-
-//                        contact.armorIcon.blit(guiGraphics, VoxelMapPipelines.GUI_TEXTURED_LEQUAL_DEPTH_TEST, x - iconX - (helmetWidth / 2), y - iconY + yOffset + helmetOffset - (helmetHeight / 2), helmetWidth, helmetWidth, color);
-                        drawSpriteQuad(guiGraphics, contact.armorIcon, -iconX - (helmetWidth / 2), iconY + yOffset + helmetOffset - (helmetHeight / 2), -2500, helmetWidth, helmetHeight, color, scaleProj);
-                    }
-
-                    // TODO: 텍스트 렌더링 고치기
-//                    if (contact.name != null && ((this.options.showPlayerNames && contact.category == VoxelMapMobCategory.PLAYER) || (this.options.showMobNames && contact.category != VoxelMapMobCategory.PLAYER))) {
-//                        float scaleFactor = this.options.fontScale / 4.0F;
-//                        guiGraphics.pose().scale(scaleFactor, scaleFactor);
-//
-//                        int m = minecraft.font.width(contact.name) / 2;
-//
-//                        guiGraphics.pose().pushMatrix();
-//                        guiGraphics.drawString(minecraft.font, contact.name, (int) ((x - iconX) / scaleFactor - m), (int) ((y - iconY + 3) / scaleFactor), 0xFFFFFFFF, false);
-//                        guiGraphics.pose().popMatrix();
-//                    }
+                    drawMobIcon(guiGraphics, contact, x, y, iconX, iconY, scaleProj, false);
                 } catch (Exception e) {
                     VoxelConstants.getLogger().error("Error rendering mob icon! " + e.getLocalizedMessage() + " contact type " + BuiltInRegistries.ENTITY_TYPE.getKey(contact.entity.getType()), e);
                 } finally {
@@ -282,6 +278,66 @@ public class Radar implements IRadar {
         VoxelMapRenderer.endBatch();
 
         guiGraphics.pose().popMatrix();
+    }
+
+    @Override
+    public void renderAboveFrame(GuiGraphics guiGraphics, int x, int y, float scaleProj) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().scale(scaleProj, scaleProj);
+
+        for (Contact contact : this.contacts) {
+            if (contact.enabled) {
+                try {
+                    guiGraphics.pose().pushMatrix();
+                    double scaledDistance = contact.distance / layoutVariables.zoomScaleAdjusted;
+                    float iconX = (float) (Math.sin(Math.toRadians(contact.angle)) * scaledDistance);
+                    float iconY = (float) (Math.cos(Math.toRadians(contact.angle)) * scaledDistance);
+                    iconY += getIconVerticalOffset(contact.entity);
+//
+//                    drawMobIcon(guiGraphics, contact, x, y, iconX, iconY, scaleProj, true);
+
+                    if (scaledDistance <= 28.5 && contact.name != null && ((this.options.showPlayerNames && contact.category == VoxelMapMobCategory.PLAYER) || (this.options.showMobNames && contact.category != VoxelMapMobCategory.PLAYER))) {
+                        float scale = this.options.fontScale / 4.0F;
+                        guiGraphics.pose().pushMatrix();
+                        guiGraphics.pose().scale(scale, scale);
+
+                        int m = minecraft.font.width(contact.name) / 2;
+                        guiGraphics.drawString(minecraft.font, contact.name, (int) ((x - iconX) / scale - m), (int) ((y - iconY + 3) / scale), 0xFFFFFFFF, false);
+
+                        guiGraphics.pose().popMatrix();
+                    }
+                } catch (Exception e) {
+                    VoxelConstants.getLogger().error("Error rendering mob icon! " + e.getLocalizedMessage() + " contact type " + BuiltInRegistries.ENTITY_TYPE.getKey(contact.entity.getType()), e);
+                } finally {
+                    guiGraphics.pose().popMatrix();
+                }
+            }
+        }
+
+        guiGraphics.pose().popMatrix();
+    }
+
+    private void drawMobIcon(GuiGraphics guiGraphics, Contact contact, int mapX, int mapY, float iconX, float iconY, float scaleProj, boolean aboveFrame) {
+        int color = contact.color;
+
+        float imageWidth = contact.icon.getIconWidth() / 8.0F;
+        float imageHeight = contact.icon.getIconHeight() / 8.0F;
+        if (!aboveFrame) {
+            drawSpriteQuad(guiGraphics, contact.icon, -iconX - (imageWidth / 2), iconY - (imageHeight / 2), -2500, imageWidth, imageHeight, color, scaleProj);
+        } else {
+            contact.icon.blit(guiGraphics, RenderPipelines.GUI_TEXTURED, mapX - iconX - (imageWidth / 2), mapY - iconY - (imageHeight / 2), imageWidth, imageHeight, color);
+        }
+
+        if (contact.armorIcon != null) {
+            float helmetWidth = contact.armorIcon.getIconWidth() / 8.0F;
+            float helmetHeight = contact.armorIcon.getIconHeight() / 8.0F;
+            float helmetOffset = Float.parseFloat(this.entityMapImageManager.getMobProperties(contact.entity).getProperty("helmetOffset", "0.0"));
+            if (!aboveFrame) {
+                drawSpriteQuad(guiGraphics, contact.armorIcon, -iconX - (helmetWidth / 2), iconY + helmetOffset - (helmetHeight / 2), -2500, helmetWidth, helmetHeight, color, scaleProj);
+            } else {
+                contact.armorIcon.blit(guiGraphics, RenderPipelines.GUI_TEXTURED, mapX - iconX - (helmetWidth / 2), mapY - iconY + helmetOffset - (helmetHeight / 2), helmetWidth, helmetWidth, color);
+            }
+        }
     }
 
     private void drawSpriteQuad(GuiGraphics guiGraphics, Sprite sprite, float x, float y, float z, float width, float height, int color, float scaleProj) {

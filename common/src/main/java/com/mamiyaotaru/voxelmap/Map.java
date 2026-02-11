@@ -6,6 +6,7 @@ import com.mamiyaotaru.voxelmap.gui.GuiWelcomeScreen;
 import com.mamiyaotaru.voxelmap.gui.overridden.EnumOptionsMinimap;
 import com.mamiyaotaru.voxelmap.interfaces.AbstractMapData;
 import com.mamiyaotaru.voxelmap.interfaces.IChangeObserver;
+import com.mamiyaotaru.voxelmap.interfaces.IRadar;
 import com.mamiyaotaru.voxelmap.persistent.GuiPersistentMap;
 import com.mamiyaotaru.voxelmap.textures.Sprite;
 import com.mamiyaotaru.voxelmap.textures.TextureAtlas;
@@ -1476,6 +1477,11 @@ public class Map implements Runnable, IChangeObserver {
             }
         }
 
+        IRadar radar = VoxelConstants.getVoxelMapInstance().getRadar();
+        if (radar != null) {
+            radar.onTickInGame(guiGraphics, this.layoutVariables, scaleProj);
+        }
+
         Identifier stencilTexture = this.options.squareMap ? resourceSquareMapStencil : resourceRoundMapStencil;
 
         float multi = (float) (1.0 / this.zoomScale);
@@ -1512,8 +1518,8 @@ public class Map implements Runnable, IChangeObserver {
 
         guiGraphics.pose().popMatrix();
 
-        if (VoxelConstants.getVoxelMapInstance().getRadar() != null) {
-            VoxelConstants.getVoxelMapInstance().getRadar().onTickInGame(guiGraphics, this.layoutVariables, scaleProj);
+        if (radar != null) {
+            radar.renderBelowFrame(guiGraphics, x, y, scaleProj);
         }
 
         RenderSystem.backupProjectionMatrix();
@@ -1535,6 +1541,11 @@ public class Map implements Runnable, IChangeObserver {
 
         Identifier minimapFrame = this.options.squareMap ? resourceSquareMapFrame : resourceRoundMapFrame;
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, minimapFrame, x - 32, y - 32, 0, 0, 64, 64, 64, 64, 0xFFFFFFFF);
+
+        // Since the matrices are already scaled by scaleProj, pass 1.0F as the scale.
+        if (radar != null) {
+            radar.renderAboveFrame(guiGraphics, x, y, 1.0F);
+        }
 
         double lastXDouble = GameVariableAccessShim.xCoordDouble();
         double lastZDouble = GameVariableAccessShim.zCoordDouble();
