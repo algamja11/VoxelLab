@@ -25,7 +25,7 @@ import com.mamiyaotaru.voxelmap.util.MutableBlockPosCache;
 import com.mamiyaotaru.voxelmap.util.ScaledDynamicMutableTexture;
 import com.mamiyaotaru.voxelmap.util.VoxelMapCachedOrthoProjectionMatrixBuffer;
 import com.mamiyaotaru.voxelmap.util.VoxelMapGuiGraphics;
-import com.mamiyaotaru.voxelmap.util.VoxelMapGuiRenderer;
+import com.mamiyaotaru.voxelmap.util.VoxelMapRenderer;
 import com.mamiyaotaru.voxelmap.util.VoxelMapPipelines;
 import com.mamiyaotaru.voxelmap.util.Waypoint;
 import com.mojang.blaze3d.ProjectionType;
@@ -1485,13 +1485,13 @@ public class Map implements Runnable, IChangeObserver {
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().identity();
 
-        VoxelMapGuiRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_NO_DEPTH_TEST);
-        VoxelMapGuiRenderer.bindTexture(stencilTexture);
-        VoxelMapGuiRenderer.addVertex(-256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.addVertex(256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.addVertex(256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.addVertex(-256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.endBatch();
+        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_NO_DEPTH_TEST);
+        VoxelMapRenderer.bindTexture(stencilTexture);
+        VoxelMapRenderer.addVertex(-256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(-256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.endBatch();
 
         guiGraphics.pose().pushMatrix();
         if (!this.options.rotates) {
@@ -1502,13 +1502,13 @@ public class Map implements Runnable, IChangeObserver {
         guiGraphics.pose().scale(scale, scale);
         guiGraphics.pose().translate(-percentX * 512.0F / 64.0F, percentY * 512.0F / 64.0F);
 
-        VoxelMapGuiRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST);
-        VoxelMapGuiRenderer.bindTexture(mapImages[this.zoom]);
-        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), -256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), 256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), 256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), -256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
-        VoxelMapGuiRenderer.endBatch();
+        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST);
+        VoxelMapRenderer.bindTexture(mapImages[this.zoom]);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), -256, 256, -2500).setUv(0, 0).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), 256, 256, -2500).setUv(1, 0).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), 256, -256, -2500).setUv(1, 1).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), -256, -256, -2500).setUv(0, 1).setColor(255, 255, 255, 255);
+        VoxelMapRenderer.endBatch();
 
         guiGraphics.pose().popMatrix();
 
@@ -1521,7 +1521,7 @@ public class Map implements Runnable, IChangeObserver {
         RenderSystem.getModelViewStack().pushMatrix();
         RenderSystem.getModelViewStack().identity();
 
-        GpuTextureView renderResult = VoxelMapGuiRenderer.flushImmediate(() -> "VoxelMap Map to Screen", 512, 512);
+        GpuTextureView renderResult = VoxelMapRenderer.flushImmediate(() -> "VoxelMap Map to Screen", 512, 512);
 
         RenderSystem.getModelViewStack().popMatrix();
         RenderSystem.restoreProjectionMatrix();

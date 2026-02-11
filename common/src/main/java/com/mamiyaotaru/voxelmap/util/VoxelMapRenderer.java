@@ -29,7 +29,7 @@ import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.function.Supplier;
 
-public class VoxelMapGuiRenderer {
+public class VoxelMapRenderer {
     private static final Tesselator TESSELLATOR = new Tesselator(4096);
     private static final ArrayList<DrawBatch> DRAW_BATCHES = new ArrayList<>();
     private static final GPUBufferPool VERTEX_BUFFER_POOL = new GPUBufferPool(() ->  "VoxelMap Cached Vertex Buffer", GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST);

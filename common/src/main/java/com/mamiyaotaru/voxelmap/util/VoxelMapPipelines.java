@@ -56,7 +56,7 @@ public class VoxelMapPipelines {
             .withBlend(BlendFunction.TRANSLUCENT)
             .build();
 
-    public static final VertexFormat VF = VertexFormat.builder()
+    public static final VertexFormat ENTITY_VERTEX_FORMAT = VertexFormat.builder()
             .add("Position", VertexFormatElement.POSITION)
             .add("Color", VertexFormatElement.COLOR)
             .add("UV0", VertexFormatElement.UV0)
@@ -68,12 +68,21 @@ public class VoxelMapPipelines {
 
     public static final RenderPipeline ENTITY_ICON = RenderPipeline.builder(RenderPipelines.ENTITY_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/entity_icon"))
-            .withSampler("Sampler1")
-            .withVertexFormat(VF, VertexFormat.Mode.QUADS)
-            .withShaderDefine("EMISSIVE")
-            .withShaderDefine("NO_OVERLAY")
-            .withShaderDefine("NO_CARDINAL_LIGHTING")
+            .withVertexFormat(ENTITY_VERTEX_FORMAT, VertexFormat.Mode.QUADS)
             .withShaderDefine("ALPHA_CUTOUT", 0.1F)
+            .withShaderDefine("PER_FACE_LIGHTING")
+            .withSampler("Sampler1")
             .withBlend(BlendFunction.TRANSLUCENT)
+            .withCull(false)
+            .build();
+
+    public static final RenderPipeline ENTITY_ICON_CULL = RenderPipeline.builder(RenderPipelines.ENTITY_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath("voxelmap", "pipeline/entity_icon_cull"))
+            .withVertexFormat(ENTITY_VERTEX_FORMAT, VertexFormat.Mode.QUADS)
+            .withShaderDefine("ALPHA_CUTOUT", 0.1F)
+            .withShaderDefine("PER_FACE_LIGHTING")
+            .withSampler("Sampler1")
+            .withBlend(BlendFunction.TRANSLUCENT)
+            .withCull(true)
             .build();
 }

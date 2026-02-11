@@ -7,7 +7,7 @@ import com.mamiyaotaru.voxelmap.util.Contact;
 import com.mamiyaotaru.voxelmap.util.GameVariableAccessShim;
 import com.mamiyaotaru.voxelmap.util.LayoutVariables;
 import com.mamiyaotaru.voxelmap.util.TextUtils;
-import com.mamiyaotaru.voxelmap.util.VoxelMapGuiRenderer;
+import com.mamiyaotaru.voxelmap.util.VoxelMapRenderer;
 import com.mamiyaotaru.voxelmap.util.VoxelMapMobCategory;
 import com.mamiyaotaru.voxelmap.util.VoxelMapPipelines;
 import com.mojang.blaze3d.vertex.VertexFormat;
@@ -196,8 +196,8 @@ public class Radar implements IRadar {
         double lastZ = GameVariableAccessShim.zCoordDouble();
         double lastY = GameVariableAccessShim.yCoordDouble();
 
-        VoxelMapGuiRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST);
-        VoxelMapGuiRenderer.bindTexture(EntityMapImageManager.resourceTextureAtlasMarker);
+        VoxelMapRenderer.beginBatch(VertexFormat.Mode.QUADS, VoxelMapPipelines.GUI_TEXTURED_MASKED_NO_DEPTH_TEST);
+        VoxelMapRenderer.bindTexture(EntityMapImageManager.resourceTextureAtlasMarker);
 
         for (Contact contact : this.contacts) {
             if (contact.icon == null) {
@@ -279,7 +279,7 @@ public class Radar implements IRadar {
                 }
             }
         }
-        VoxelMapGuiRenderer.endBatch();
+        VoxelMapRenderer.endBatch();
 
         guiGraphics.pose().popMatrix();
     }
@@ -293,10 +293,10 @@ public class Radar implements IRadar {
         float vMin = sprite.getMinV();
         float vMax = sprite.getMaxV();
 
-        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), x, y + height, z).setUv(uMin, vMin).setColor(color);
-        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), x + width, y + height, z).setUv(uMax, vMin).setColor(color);
-        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), x + width, y, z).setUv(uMax, vMax).setColor(color);
-        VoxelMapGuiRenderer.addVertex(guiGraphics.pose(), x, y, z).setUv(uMin, vMax).setColor(color);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), x, y + height, z).setUv(uMin, vMin).setColor(color);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), x + width, y + height, z).setUv(uMax, vMin).setColor(color);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), x + width, y, z).setUv(uMax, vMax).setColor(color);
+        VoxelMapRenderer.addVertex(guiGraphics.pose(), x, y, z).setUv(uMin, vMax).setColor(color);
 
         guiGraphics.pose().popMatrix();
     }
