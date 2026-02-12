@@ -167,11 +167,9 @@ public class VoxelMapRenderer {
 
                 renderPass.setPipeline(drawBatch.getPipeline());
                 TextureSetup textureSetup = drawBatch.getTextureSetup();
-                if (textureSetup != null) {
-                    renderPass.bindTexture("Sampler0", textureSetup.texure0(), textureSetup.sampler0());
-                    renderPass.bindTexture("Sampler1", textureSetup.texure1(), textureSetup.sampler1());
-                    renderPass.bindTexture("Sampler2", textureSetup.texure2(), textureSetup.sampler2());
-                }
+                renderPass.bindTexture("Sampler0", textureSetup.texure0(), textureSetup.sampler0());
+                renderPass.bindTexture("Sampler1", textureSetup.texure1(), textureSetup.sampler1());
+                renderPass.bindTexture("Sampler2", textureSetup.texure2(), textureSetup.sampler2());
                 renderPass.drawIndexed(0, 0, drawBatch.getMeshData().drawState().indexCount(), 1);
             }
         }
@@ -191,6 +189,7 @@ public class VoxelMapRenderer {
 
         public DrawBatch(RenderPipeline pipeline) {
             this.pipeline = pipeline;
+            this.textureSetup = TextureSetup.noTexture();
         }
 
         public void setTexture(TextureSetup textureSetup) {
