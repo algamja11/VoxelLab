@@ -15,6 +15,7 @@ import com.mamiyaotaru.voxelmap.util.VoxelMapPipelines;
 import com.mojang.blaze3d.ProjectionType;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderPass;
@@ -91,12 +92,14 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.lwjgl.system.MemoryStack;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -126,6 +129,7 @@ public class EntityMapImageManager {
     private static final int OVERLAY = OverlayTexture.NO_OVERLAY;
     private final GpuSampler lightSampler;
     private final GpuSampler overlaySampler;
+    private final GpuBuffer lightingBuffer;
 
     private final VoxelMapCachedOrthoProjectionMatrixBuffer projection;
     private final Tesselator fboTessellator = new Tesselator(4096);
@@ -145,6 +149,14 @@ public class EntityMapImageManager {
 
         this.lightSampler = RenderSystem.getSamplerCache().getSampler(AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE, FilterMode.LINEAR, FilterMode.LINEAR, false);
         this.overlaySampler = RenderSystem.getSamplerCache().getSampler(AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE, FilterMode.LINEAR, FilterMode.LINEAR, false);
+
+        Vector3f fullBright = new Vector3f(1.0F, -1.0F, 1.0F).normalize();
+        Vector3f fullBright2 = new Vector3f(-1.0F, -1.0F, 1.0F).normalize();
+        this.lightingBuffer = RenderSystem.getDevice().createBuffer(() -> "VoxelMap Lighting UBO", GpuBuffer.USAGE_UNIFORM + GpuBuffer.USAGE_COPY_DST, Lighting.UBO_SIZE);
+        try (MemoryStack memoryStack = MemoryStack.stackPush()) {
+            ByteBuffer byteBuffer = Std140Builder.onStack(memoryStack, Lighting.UBO_SIZE).putVec3(fullBright).putVec3(fullBright2).get();
+            RenderSystem.getDevice().createCommandEncoder().writeToBuffer(this.lightingBuffer.slice(), byteBuffer);
+        }
 
         final int fboTextureSize = 512;
         this.fboTexture = RenderSystem.getDevice().createTexture("voxelmap-radarfbotexture", GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_RENDER_ATTACHMENT, TextureFormat.RGBA8, fboTextureSize, fboTextureSize, 1, 1);
@@ -630,8 +642,7 @@ public class EntityMapImageManager {
         AbstractTexture texture = minecraft.getTextureManager().getTexture(primaryId);
         AbstractTexture texture2 = secondaryId == null ? null : minecraft.getTextureManager().getTexture(secondaryId);
 
-        minecraft.gameRenderer.getLighting().setupFor(Lighting.Entry.ENTITY_IN_UI);
-
+        RenderSystem.setShaderLights(lightingBuffer.slice());
         RenderSystem.getModelViewStack().pushMatrix();
         RenderSystem.getModelViewStack().identity();
         GpuBufferSlice gpuBufferSlice = RenderSystem.getDynamicUniforms()
