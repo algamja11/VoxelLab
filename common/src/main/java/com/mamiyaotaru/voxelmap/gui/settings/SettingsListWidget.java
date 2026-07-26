@@ -59,12 +59,7 @@ public final class SettingsListWidget extends AbstractSelectionList<SettingsList
 
     @Override
     public int getRowWidth() {
-        return Math.max(120, getWidth() - 10);
-    }
-
-    @Override
-    protected int scrollBarX() {
-        return getX() + getWidth() - 6;
+        return Math.max(120, getWidth() - 120);
     }
 
     @Override

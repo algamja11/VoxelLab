@@ -8,9 +8,8 @@ import com.mamiyaotaru.voxelmap.gui.settings.SettingsCategory;
 import com.mamiyaotaru.voxelmap.gui.settings.SettingsListWidget;
 import com.mamiyaotaru.voxelmap.gui.settings.SettingsOption;
 import com.mamiyaotaru.voxelmap.gui.settings.VoxelMapSettings;
-import java.util.List;
 import java.util.ArrayList;
-import net.minecraft.ChatFormatting;
+import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -18,21 +17,23 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.PreeditEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 public class GuiMinimapOptions extends GuiScreenMinimap {
-    private static final int HEADER_HEIGHT = 32;
+    private static final int HEADER_HEIGHT = 24;
     private static final int FOOTER_HEIGHT = 32;
-    private static final int CATEGORY_GAP = 4;
+    private static final int MIN_TAB_WIDTH = 80;
+    private static final int TAB_SIDE_OFFSET = 28;
 
     private final List<SettingsCategory> categories = VoxelMapSettings.create(this::openEntityTypeDialog);
     private final List<Button> categoryButtons = new ArrayList<>();
     private int selectedCategory;
-    private int contentX;
-    private int contentY;
-    private int contentWidth;
-    private int contentHeight;
-    private int categoryWidth;
+    private int tabWidth;
+    private int tabScroll;
+    private int tabMinScroll;
+    private int tabMaxScroll;
     private SettingsListWidget optionList;
     private EntityTypeDialog entityTypeDialog;
 
@@ -58,19 +59,17 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
         clearWidgets();
         categoryButtons.clear();
 
-        int maximumWidth = 760;
-        contentWidth = Math.min(width - 16, maximumWidth);
-        contentHeight = Math.max(80, height - HEADER_HEIGHT - FOOTER_HEIGHT);
-        contentX = (width - contentWidth) / 2;
-        contentY = HEADER_HEIGHT;
-        categoryWidth = Math.clamp(contentWidth / 5, 92, 132);
+        tabWidth = Math.max(MIN_TAB_WIDTH, (getWidth() - TAB_SIDE_OFFSET * 2) / categories.size());
+        tabMinScroll = -TAB_SIDE_OFFSET;
+        tabMaxScroll = Math.max(tabMinScroll, tabWidth * categories.size() - getWidth() + TAB_SIDE_OFFSET);
+        tabScroll = tabMinScroll;
 
         for (int i = 0; i < categories.size(); i++) {
             int index = i;
-            Button button = Button.builder(categories.get(i).title(), ignored -> selectCategory(index))
-                    .bounds(contentX, contentY + i * 24, categoryWidth, 20).build();
+            Button button = new TabButton(categories.get(i).title(), 0 , 0, tabWidth, HEADER_HEIGHT, ignored -> selectCategory(index));
             categoryButtons.add(addRenderableWidget(button));
         }
+        updateCategoryButtons();
 
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), ignored -> onClose())
                 .bounds(width / 2 - 100, height - 27, 200, 20).build());
@@ -97,9 +96,7 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
             optionList.commitPendingText();
             removeWidget(optionList);
         }
-        int listX = contentX + categoryWidth + CATEGORY_GAP;
-        int listWidth = contentWidth - categoryWidth - CATEGORY_GAP;
-        optionList = new SettingsListWidget(this, listX, contentY, listWidth, contentHeight, categories.get(selectedCategory));
+        optionList = new SettingsListWidget(this, 0, HEADER_HEIGHT, getWidth(), getHeight() - HEADER_HEIGHT - FOOTER_HEIGHT, categories.get(selectedCategory));
         addRenderableWidget(optionList);
         updateCategoryButtons();
     }
@@ -188,6 +185,11 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
             entityTypeDialog.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
             return true;
         }
+        if (mouseY <= HEADER_HEIGHT) {
+            tabScroll = Math.max(tabMinScroll, Math.min(tabMaxScroll, tabScroll + (int) Math.signum(verticalAmount) * 14));
+            updateCategoryButtons();
+            return true;
+        }
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
@@ -219,11 +221,12 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
     private void updateCategoryButtons() {
         for (int i = 0; i < categoryButtons.size(); i++) {
             Button button = categoryButtons.get(i);
-            boolean selected = i == selectedCategory;
-            button.active = !selected;
-            button.setMessage(selected
-                    ? Component.literal("◆ ").withStyle(ChatFormatting.AQUA).append(categories.get(i).title())
-                    : categories.get(i).title());
+            button.active = i != selectedCategory;
+            button.setPosition(i * tabWidth - tabScroll, 0);
+
+            // Make tab widgets always on top
+            removeWidget(button);
+            addRenderableWidget(button);
         }
     }
 
@@ -248,15 +251,31 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         super.extractRenderState(graphics, mouseX, mouseY, delta);
-        if (entityTypeDialog == null)
-            graphics.centeredText(getFont(), Component.translatable("options.minimap.title"), width / 2, 12, 0xFFFFFFFF);
     }
 
-    @Override
-    public void extractMenuBackground(GuiGraphicsExtractor graphics) {
-        super.extractMenuBackground(graphics);
-        graphics.fill(contentX - 4, contentY - 4, contentX + contentWidth + 4, contentY + contentHeight + 4, 0x66000000);
-        graphics.fill(contentX + categoryWidth + 1, contentY, contentX + categoryWidth + 2, contentY + contentHeight, 0x88707070);
+    class TabButton extends Button {
+        private static final Identifier DEFAULT = Identifier.withDefaultNamespace("widget/tab");
+        private static final Identifier DEFAULT_HOVER = Identifier.withDefaultNamespace("widget/tab_highlighted");
+        private static final Identifier SELECTED = Identifier.withDefaultNamespace("widget/tab_selected");
+        private static final Identifier SELECTED_HOVER = Identifier.withDefaultNamespace("widget/tab_selected_highlighted");
+
+        public TabButton(Component title, int x, int y, int width, int height, OnPress onPress) {
+            super(x, y, width, height, title, onPress, DEFAULT_NARRATION);
+        }
+
+        @Override
+        protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+            // inactive = selected
+            Identifier sprite = active ? (isHoveredOrFocused() ? DEFAULT_HOVER : DEFAULT) : (isHoveredOrFocused() ? SELECTED_HOVER : SELECTED);
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, getX(), getY(), getWidth(), getHeight(), 0XFFFFFFFF);
+
+            graphics.centeredText(getFont(), getMessage().getString(), getX() + getWidth() / 2, getY() + getHeight() / 2 + (active ? -2 : -4), 0xFFFFFFFF);
+
+            if (!active) {
+                int textWidth = getFont().width(getMessage());
+                graphics.fill(getX() + (getWidth() - textWidth) / 2, getY() + getHeight() - 1, getX() + (getWidth() + textWidth) / 2, getY() + getHeight(), 0xFFFFFFFF);
+            }
+        }
     }
 
 }
