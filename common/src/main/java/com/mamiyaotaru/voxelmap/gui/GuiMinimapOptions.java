@@ -279,7 +279,7 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
 
             if (!active) {
                 int textWidth = getFont().width(getMessage());
-                graphics.fill(getX() + (getWidth() - textWidth) / 2, getY() + getHeight() - 1, getX() + (getWidth() + textWidth) / 2, getY() + getHeight(), 0xFFFFFFFF);
+                graphics.fill(getX() + (getWidth() - textWidth) / 2, getY() + getHeight() - 2, getX() + (getWidth() + textWidth) / 2, getY() + getHeight() - 1, 0xFFFFFFFF);
             }
         }
     }
