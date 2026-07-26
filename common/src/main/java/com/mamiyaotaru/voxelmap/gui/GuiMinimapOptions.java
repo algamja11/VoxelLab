@@ -99,6 +99,7 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
         optionList = new SettingsListWidget(this, 0, HEADER_HEIGHT, getWidth(), getHeight() - HEADER_HEIGHT - FOOTER_HEIGHT, categories.get(selectedCategory));
         addRenderableWidget(optionList);
         updateCategoryButtons();
+        reorderCategoryButtons();
     }
 
     public void cycleChoice(SettingsOption<?> option) {
@@ -223,12 +224,17 @@ public class GuiMinimapOptions extends GuiScreenMinimap {
             Button button = categoryButtons.get(i);
             button.active = i != selectedCategory;
             button.setPosition(i * tabWidth - tabScroll, 0);
+        }
+    }
 
-            // Make tab widgets always on top
+    private void reorderCategoryButtons() {
+        // Make category tabs always on top
+        for (Button button : categoryButtons) {
             removeWidget(button);
             addRenderableWidget(button);
         }
     }
+
 
     @Override
     public void onClose() {
